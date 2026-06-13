@@ -38,7 +38,7 @@ export default async function BookPage({ params }: { params: { id: string } }) {
 
   const { data: reviews, error: reviewsError } = await supabase
     .from('reviews')
-    .select('id, user_id, body, spoiler, created_at, profiles ( username, display_name )')
+    .select('id, user_id, body, spoiler, created_at')
     .eq('book_id', book.id)
     .order('created_at', { ascending: false });
   const reviewList = reviews ?? [];
@@ -58,9 +58,12 @@ export default async function BookPage({ params }: { params: { id: string } }) {
     reactions = rx ?? [];
     comments = cm ?? [];
 
-    const ids = Array.from(
-      new Set([...reactions.map((r) => r.user_id), ...comments.map((c) => c.user_id)])
-    );
+    // Look up usernames for review authors, reactors and commenters in one go.
+    const ids = Array.from(new Set([
+      ...reviewList.map((r: any) => r.user_id),
+      ...reactions.map((r) => r.user_id),
+      ...comments.map((c) => c.user_id),
+    ]));
     if (ids.length) {
       const { data: profs } = await supabase.from('profiles').select('id, username').in('id', ids);
       (profs ?? []).forEach((p: any) => nameById.set(p.id, p.username));
@@ -137,7 +140,7 @@ export default async function BookPage({ params }: { params: { id: string } }) {
                 key={rev.id}
                 bookId={book.id}
                 reviewId={rev.id}
-                username={rev.profiles?.username ?? null}
+                username={nameById.get(rev.user_id) ?? null}
                 body={rev.body}
                 spoiler={rev.spoiler}
                 mine={mine}
