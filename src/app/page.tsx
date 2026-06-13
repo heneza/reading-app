@@ -3,6 +3,7 @@ import Image from 'next/image';
 import { createClient } from '@/utils/supabase/server';
 import { coverUrl } from '@/lib/openlibrary';
 import Avatar from '@/components/Avatar';
+import { timeAgo } from '@/lib/time';
 
 export const dynamic = 'force-dynamic';
 
@@ -301,6 +302,8 @@ export default async function ExplorePage() {
                         ) : null}
                       </>
                     )}
+                    {' '}
+                    <span className="whitespace-nowrap text-stone-400">· {timeAgo(a.at)}</span>
                   </p>
                 </li>
               );

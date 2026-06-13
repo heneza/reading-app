@@ -72,6 +72,9 @@ export default async function Nav() {
                   Profile
                 </Link>
               )}
+              <Link href="/settings" className={pill}>
+                Settings
+              </Link>
               <form action={signout}>
                 <button className={pill}>Sign out</button>
               </form>

@@ -4,6 +4,7 @@ import { useState, useTransition } from 'react';
 import { useRouter } from 'next/navigation';
 import Link from 'next/link';
 import Avatar from '@/components/Avatar';
+import { timeAgo } from '@/lib/time';
 import { submitReview, removeReview } from '@/app/actions/reviews';
 
 function PencilIcon() {
@@ -32,6 +33,7 @@ export default function ReviewItem({
   reviewId,
   username,
   avatarUrl,
+  createdAt,
   body,
   spoiler,
   mine,
@@ -41,6 +43,7 @@ export default function ReviewItem({
   reviewId: string;
   username: string | null;
   avatarUrl?: string | null;
+  createdAt?: string | null;
   body: string;
   spoiler: boolean;
   mine: boolean;
@@ -98,6 +101,9 @@ export default function ReviewItem({
         <div className="flex items-center gap-2 text-sm font-medium">
           <Avatar src={avatarUrl} name={username ?? 'reader'} size={28} />
           <Link href={`/u/${username}`} className="hover:underline">@{username ?? 'reader'}</Link>
+          {createdAt && (
+            <span className="text-xs font-normal text-stone-400">· {timeAgo(createdAt)}</span>
+          )}
           {mine && <span className="ml-2 rounded bg-brand px-2 py-0.5 text-xs text-white">you</span>}
           {(editing ? draftSpoiler : spoiler) && (
             <span className="ml-2 rounded bg-amber-100 px-2 py-0.5 text-xs text-amber-700">spoiler</span>

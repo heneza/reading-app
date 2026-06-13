@@ -14,6 +14,7 @@ import ReviewItem from './ReviewItem';
 import { removeFromShelf } from '@/app/actions/shelf';
 import { classifyBook } from '@/app/actions/genres';
 import { genreName } from '@/lib/genres';
+import { timeAgo } from '@/lib/time';
 
 const RATING_OPTIONS = Array.from({ length: 10 }, (_, i) => (i + 1) * 0.5);
 
@@ -174,6 +175,7 @@ export default async function BookPage({ params }: { params: { id: string } }) {
                 reviewId={rev.id}
                 username={nameById.get(rev.user_id) ?? null}
                 avatarUrl={avatarById.get(rev.user_id) ?? null}
+                createdAt={rev.created_at}
                 body={rev.body}
                 spoiler={rev.spoiler}
                 mine={mine}
@@ -220,7 +222,8 @@ export default async function BookPage({ params }: { params: { id: string } }) {
                           <li key={c.id} className="flex items-start justify-between gap-2 text-sm">
                             <p className="text-slate-700">
                               <Link href={`/u/${uname}`} className="font-medium hover:text-brand hover:underline">@{uname}</Link>{' '}
-                              {c.body}
+                              {c.body}{' '}
+                              <span className="text-xs text-stone-400">· {timeAgo(c.created_at)}</span>
                             </p>
                             {mineC && (
                               <form action={deleteReviewComment}>
