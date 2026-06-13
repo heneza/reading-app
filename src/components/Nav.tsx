@@ -18,9 +18,12 @@ export default async function Nav() {
     username = p?.username ?? null;
   }
 
+  const pill =
+    'rounded-full px-3 py-1.5 text-slate-600 transition hover:bg-brand-soft hover:text-brand';
+
   return (
-    <header className="border-b border-slate-200 bg-white">
-      <nav className="mx-auto flex max-w-[880px] items-center gap-4 px-5 py-3">
+    <header className="sticky top-0 z-20 border-b border-slate-200/70 bg-white/80 backdrop-blur">
+      <nav className="mx-auto flex max-w-[880px] items-center gap-3 px-5 py-3">
         <Link href="/" className="whitespace-nowrap text-lg font-bold text-brand">
           📚 Reading App
         </Link>
@@ -30,29 +33,30 @@ export default async function Nav() {
           <input
             name="q"
             placeholder="Search books, authors, users…"
-            className="w-full rounded-full border border-slate-300 px-4 py-1.5 text-sm focus:border-brand focus:outline-none"
+            className="w-full rounded-full border border-slate-200 bg-slate-50 px-4 py-2 text-sm transition focus:border-brand focus:bg-white focus:outline-none"
           />
         </form>
 
-        <div className="ml-auto flex items-center gap-4 text-sm">
-          <Link href="/search" className="hover:text-brand">
+        <div className="ml-auto flex items-center gap-1 text-sm">
+          <Link href="/search" className={pill}>
             Search
           </Link>
           {user ? (
             <>
               {username && (
-                <Link href={`/u/${username}`} className="hover:text-brand">
+                <Link href={`/u/${username}`} className={pill}>
                   Profile
                 </Link>
               )}
               <form action={signout}>
-                <button className="text-slate-500 hover:text-brand">
-                  Sign out
-                </button>
+                <button className={pill}>Sign out</button>
               </form>
             </>
           ) : (
-            <Link href="/login" className="hover:text-brand">
+            <Link
+              href="/login"
+              className="rounded-full bg-brand px-4 py-1.5 font-medium text-white transition hover:bg-brand-dark"
+            >
               Log in
             </Link>
           )}
