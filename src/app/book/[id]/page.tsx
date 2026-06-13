@@ -39,7 +39,7 @@ export default async function BookPage({
   searchParams,
 }: {
   params: { id: string };
-  searchParams: { edit?: string };
+  searchParams: { edit?: string; reviewError?: string };
 }) {
   const supabase = createClient();
   const { data: { user } } = await supabase.auth.getUser();
@@ -127,6 +127,12 @@ export default async function BookPage({
           )}
         </div>
       </div>
+
+      {searchParams?.reviewError && (
+        <p className="mt-6 rounded border border-red-300 bg-red-50 p-3 text-sm text-red-700">
+          Could not post review: {searchParams.reviewError}
+        </p>
+      )}
 
       {/* --- Write / edit a review --- */}
       {user && (

@@ -20,29 +20,42 @@ export async function saveRating(formData: FormData) {
   revalidatePath(`/book/${bookId}`);
 }
 
+// Surfaces any failure as ?reviewError=... on the book page so it's visible.
 export async function saveReview(formData: FormData) {
   const supabase = createClient();
   const { data: { user } } = await supabase.auth.getUser();
-  console.log('[saveReview] user id:', user?.id ?? 'NULL (not authenticated on server)');
-  if (!user) redirect('/login');
-
   const bookId = String(formData.get('bookId'));
+
+  if (!user) {
+    redirect(`/book/${bookId}?reviewError=${encodeURIComponent('No user session on server')}`);
+  }
+
   const reviewId = formData.get('reviewId') ? String(formData.get('reviewId')) : null;
   const body = String(formData.get('body') ?? '').trim();
   const spoiler = formData.get('spoiler') === 'on';
-  console.log('[saveReview] bookId:', bookId, 'reviewId:', reviewId, 'bodyLength:', body.length);
 
-  if (body) {
-    if (reviewId) {
-      const { error } = await supabase.from('reviews').update({ body, spoiler })
-        .eq('id', reviewId).eq('user_id', user.id);
-      console.log('[saveReview] UPDATE error:', error ? JSON.stringify(error) : 'none');
-    } else {
-      const { error } = await supabase.from('reviews')
-        .insert({ user_id: user.id, book_id: bookId, body, spoiler });
-      console.log('[saveReview] INSERT error:', error ? JSON.stringify(error) : 'none');
+  if (!body) {
+    redirect(`/book/${bookId}?reviewError=${encodeURIComponent('Review text was empty')}`);
+  }
+
+  if (reviewId) {
+    const { error } = await supabase
+      .from('reviews')
+      .update({ body, spoiler })
+      .eq('id', reviewId)
+      .eq('user_id', user.id);
+    if (error) {
+      redirect(`/book/${bookId}?reviewError=${encodeURIComponent(error.message)}`);
+    }
+  } else {
+    const { error } = await supabase
+      .from('reviews')
+      .insert({ user_id: user.id, book_id: bookId, body, spoiler });
+    if (error) {
+      redirect(`/book/${bookId}?reviewError=${encodeURIComponent(error.message)}`);
     }
   }
+
   redirect(`/book/${bookId}`);
 }
 
@@ -58,7 +71,6 @@ export async function deleteReview(formData: FormData) {
   redirect(`/book/${bookId}`);
 }
 
-// Like or dislike a review. Clicking the same reaction again removes it (toggle).
 export async function reactToReview(formData: FormData) {
   const supabase = createClient();
   const { data: { user } } = await supabase.auth.getUser();
@@ -66,7 +78,7 @@ export async function reactToReview(formData: FormData) {
 
   const bookId = String(formData.get('bookId'));
   const reviewId = String(formData.get('reviewId'));
-  const type = String(formData.get('type')); // 'like' | 'dislike'
+  const type = String(formData.get('type'));
 
   const { data: existing } = await supabase
     .from('review_reactions')
@@ -76,19 +88,14 @@ export async function reactToReview(formData: FormData) {
     .maybeSingle();
 
   if (existing && existing.type === type) {
-    // Same button pressed again -> remove the reaction.
-    await supabase.from('review_reactions')
-      .delete().eq('review_id', reviewId).eq('user_id', user.id);
+    await supabase.from('review_reactions').delete().eq('review_id', reviewId).eq('user_id', user.id);
   } else {
-    // New reaction, or switching like<->dislike.
     await supabase.from('review_reactions')
       .upsert({ review_id: reviewId, user_id: user.id, type }, { onConflict: 'review_id,user_id' });
   }
-
   revalidatePath(`/book/${bookId}`);
 }
 
-// --- Replies (comments) on reviews ---
 export async function addReviewComment(formData: FormData) {
   const supabase = createClient();
   const { data: { user } } = await supabase.auth.getUser();
@@ -99,9 +106,7 @@ export async function addReviewComment(formData: FormData) {
   const body = String(formData.get('body') ?? '').trim();
 
   if (body) {
-    await supabase
-      .from('review_comments')
-      .insert({ review_id: reviewId, user_id: user.id, body });
+    await supabase.from('review_comments').insert({ review_id: reviewId, user_id: user.id, body });
   }
   redirect(`/book/${bookId}`);
 }
@@ -114,11 +119,6 @@ export async function deleteReviewComment(formData: FormData) {
   const bookId = String(formData.get('bookId'));
   const commentId = String(formData.get('commentId'));
 
-  await supabase
-    .from('review_comments')
-    .delete()
-    .eq('id', commentId)
-    .eq('user_id', user.id);
-
+  await supabase.from('review_comments').delete().eq('id', commentId).eq('user_id', user.id);
   redirect(`/book/${bookId}`);
 }
