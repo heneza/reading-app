@@ -6,9 +6,7 @@ import { createClient } from '@/utils/supabase/server';
 
 export async function saveRating(formData: FormData) {
   const supabase = createClient();
-  const {
-    data: { user },
-  } = await supabase.auth.getUser();
+  const { data: { user } } = await supabase.auth.getUser();
   if (!user) redirect('/login');
 
   const bookId = String(formData.get('bookId'));
@@ -17,66 +15,71 @@ export async function saveRating(formData: FormData) {
 
   await supabase
     .from('reading_entries')
-    .upsert(
-      { user_id: user.id, book_id: bookId, rating },
-      { onConflict: 'user_id,book_id' }
-    );
+    .upsert({ user_id: user.id, book_id: bookId, rating }, { onConflict: 'user_id,book_id' });
 
   revalidatePath(`/book/${bookId}`);
 }
 
-// Post a NEW review, or UPDATE an existing one if a reviewId is supplied.
 export async function saveReview(formData: FormData) {
   const supabase = createClient();
-  const {
-    data: { user },
-  } = await supabase.auth.getUser();
+  const { data: { user } } = await supabase.auth.getUser();
   if (!user) redirect('/login');
 
   const bookId = String(formData.get('bookId'));
-  const reviewId = formData.get('reviewId')
-    ? String(formData.get('reviewId'))
-    : null;
+  const reviewId = formData.get('reviewId') ? String(formData.get('reviewId')) : null;
   const body = String(formData.get('body') ?? '').trim();
   const spoiler = formData.get('spoiler') === 'on';
 
   if (body) {
     if (reviewId) {
-      // Editing: update this one review (only if it's mine).
-      await supabase
-        .from('reviews')
-        .update({ body, spoiler })
-        .eq('id', reviewId)
-        .eq('user_id', user.id);
+      await supabase.from('reviews').update({ body, spoiler })
+        .eq('id', reviewId).eq('user_id', user.id);
     } else {
-      // New review: insert a fresh row.
-      await supabase
-        .from('reviews')
+      await supabase.from('reviews')
         .insert({ user_id: user.id, book_id: bookId, body, spoiler });
     }
   }
-
-  // Redirect re-renders the page: the new review shows in the list and the
-  // form comes back empty, ready for another.
   redirect(`/book/${bookId}`);
 }
 
-// Delete one specific review by its id (only if it's mine).
 export async function deleteReview(formData: FormData) {
   const supabase = createClient();
-  const {
-    data: { user },
-  } = await supabase.auth.getUser();
+  const { data: { user } } = await supabase.auth.getUser();
   if (!user) redirect('/login');
 
   const bookId = String(formData.get('bookId'));
   const reviewId = String(formData.get('reviewId'));
 
-  await supabase
-    .from('reviews')
-    .delete()
-    .eq('id', reviewId)
-    .eq('user_id', user.id);
-
+  await supabase.from('reviews').delete().eq('id', reviewId).eq('user_id', user.id);
   redirect(`/book/${bookId}`);
+}
+
+// Like or dislike a review. Clicking the same reaction again removes it (toggle).
+export async function reactToReview(formData: FormData) {
+  const supabase = createClient();
+  const { data: { user } } = await supabase.auth.getUser();
+  if (!user) redirect('/login');
+
+  const bookId = String(formData.get('bookId'));
+  const reviewId = String(formData.get('reviewId'));
+  const type = String(formData.get('type')); // 'like' | 'dislike'
+
+  const { data: existing } = await supabase
+    .from('review_reactions')
+    .select('type')
+    .eq('review_id', reviewId)
+    .eq('user_id', user.id)
+    .maybeSingle();
+
+  if (existing && existing.type === type) {
+    // Same button pressed again -> remove the reaction.
+    await supabase.from('review_reactions')
+      .delete().eq('review_id', reviewId).eq('user_id', user.id);
+  } else {
+    // New reaction, or switching like<->dislike.
+    await supabase.from('review_reactions')
+      .upsert({ review_id: reviewId, user_id: user.id, type }, { onConflict: 'review_id,user_id' });
+  }
+
+  revalidatePath(`/book/${bookId}`);
 }
