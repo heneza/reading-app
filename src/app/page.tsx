@@ -84,7 +84,7 @@ export default async function HomePage() {
               <h2 className="mb-3 text-sm font-semibold uppercase tracking-wide text-slate-400">
                 {STATUS_LABEL[group.status]} ({group.items.length})
               </h2>
-              <ul className="grid grid-cols-2 gap-4 sm:grid-cols-3">
+              <ul className="grid grid-cols-3 gap-3 sm:grid-cols-4 md:grid-cols-5">
                 {group.items.map((e: any, i: number) => {
                   const src = coverUrl(e.books?.cover_id, 'M');
                   return (
