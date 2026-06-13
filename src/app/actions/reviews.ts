@@ -23,20 +23,24 @@ export async function saveRating(formData: FormData) {
 export async function saveReview(formData: FormData) {
   const supabase = createClient();
   const { data: { user } } = await supabase.auth.getUser();
+  console.log('[saveReview] user id:', user?.id ?? 'NULL (not authenticated on server)');
   if (!user) redirect('/login');
 
   const bookId = String(formData.get('bookId'));
   const reviewId = formData.get('reviewId') ? String(formData.get('reviewId')) : null;
   const body = String(formData.get('body') ?? '').trim();
   const spoiler = formData.get('spoiler') === 'on';
+  console.log('[saveReview] bookId:', bookId, 'reviewId:', reviewId, 'bodyLength:', body.length);
 
   if (body) {
     if (reviewId) {
-      await supabase.from('reviews').update({ body, spoiler })
+      const { error } = await supabase.from('reviews').update({ body, spoiler })
         .eq('id', reviewId).eq('user_id', user.id);
+      console.log('[saveReview] UPDATE error:', error ? JSON.stringify(error) : 'none');
     } else {
-      await supabase.from('reviews')
+      const { error } = await supabase.from('reviews')
         .insert({ user_id: user.id, book_id: bookId, body, spoiler });
+      console.log('[saveReview] INSERT error:', error ? JSON.stringify(error) : 'none');
     }
   }
   redirect(`/book/${bookId}`);
