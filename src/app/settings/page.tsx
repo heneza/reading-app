@@ -2,6 +2,7 @@ import { redirect } from 'next/navigation';
 import { createClient } from '@/utils/supabase/server';
 import { updateProfile } from '@/app/actions/profile';
 import GenrePicker from './GenrePicker';
+import FavoritesPicker from './FavoritesPicker';
 
 // Always render fresh (no caching) so data and login state are current.
 export const dynamic = 'force-dynamic';
@@ -24,6 +25,22 @@ export default async function SettingsPage() {
     .select('genre')
     .eq('user_id', user.id);
   const selectedGenres = (myGenres ?? []).map((r: any) => r.genre);
+
+  // Shelf books (to choose favourites from) + current favourites.
+  const { data: shelfEntries } = await supabase
+    .from('reading_entries')
+    .select('book_id, books ( title, cover_id )')
+    .eq('user_id', user.id)
+    .order('updated_at', { ascending: false });
+  const shelfBooks = (shelfEntries ?? [])
+    .map((e: any) => ({ id: e.book_id, title: e.books?.title, coverId: e.books?.cover_id }))
+    .filter((b: any) => b.title);
+  const { data: favRows } = await supabase
+    .from('favorite_books')
+    .select('book_id, position')
+    .eq('user_id', user.id)
+    .order('position');
+  const initialFavorites = (favRows ?? []).map((r: any) => r.book_id);
 
   const field = 'w-full rounded border border-slate-300 px-3 py-2';
 
@@ -90,6 +107,19 @@ export default async function SettingsPage() {
           your feed.
         </p>
         <GenrePicker initial={selectedGenres} username={profile?.username ?? ''} />
+      </section>
+
+      <section className="mt-10 border-t border-stone-200 pt-8">
+        <h2 className="mb-1 text-lg font-semibold">Favourite books (top 4)</h2>
+        <p className="mb-4 text-sm text-stone-500">
+          Pick up to four books from your shelf to feature at the top of your
+          profile.
+        </p>
+        <FavoritesPicker
+          shelfBooks={shelfBooks}
+          initial={initialFavorites}
+          username={profile?.username ?? ''}
+        />
       </section>
     </div>
   );

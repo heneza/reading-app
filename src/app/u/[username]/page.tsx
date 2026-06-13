@@ -49,6 +49,37 @@ export default async function ProfilePage({
     .eq('user_id', profile.id);
   const favGenres = (genreRows ?? []).map((r: any) => r.genre);
 
+  // Favourite books (Top 4, like Letterboxd).
+  const { data: favRows } = await supabase
+    .from('favorite_books')
+    .select('position, book_id, books ( title, author, cover_id )')
+    .eq('user_id', profile.id)
+    .order('position');
+  const favs = favRows ?? [];
+
+  // Most liked reviews by this user.
+  const { data: myReviews } = await supabase
+    .from('reviews')
+    .select('id, body, book_id, books ( title )')
+    .eq('user_id', profile.id);
+  const reviewIds = (myReviews ?? []).map((r: any) => r.id);
+  const likeCount = new Map<string, number>();
+  if (reviewIds.length) {
+    const { data: rx } = await supabase
+      .from('review_reactions')
+      .select('review_id')
+      .eq('type', 'like')
+      .in('review_id', reviewIds);
+    (rx ?? []).forEach((r: any) =>
+      likeCount.set(r.review_id, (likeCount.get(r.review_id) ?? 0) + 1)
+    );
+  }
+  const topReviews = (myReviews ?? [])
+    .map((r: any) => ({ ...r, likes: likeCount.get(r.id) ?? 0 }))
+    .filter((r: any) => r.likes > 0)
+    .sort((a: any, b: any) => b.likes - a.likes)
+    .slice(0, 4);
+
   // Follow graph: who follows them, who they follow (used for counts + friends)
   const { data: followerRows } = await supabase
     .from('follows')
@@ -183,6 +214,64 @@ export default async function ProfilePage({
           </form>
         ) : null}
       </div>
+
+      {/* --- Favourites (Top 4) --- */}
+      {favs.length > 0 && (
+        <section className="mt-8">
+          <h2 className="mb-3 text-sm font-semibold uppercase tracking-wide text-slate-400">
+            Favourites
+          </h2>
+          <ul className="grid grid-cols-4 gap-3 sm:max-w-md">
+            {favs.map((f: any) => {
+              const src = coverUrl(f.books?.cover_id, 'M');
+              return (
+                <li key={f.position}>
+                  <Link href={`/book/${f.book_id}`} className="group block">
+                    <div className="aspect-[2/3] w-full overflow-hidden rounded bg-slate-100 group-hover:opacity-90">
+                      {src && (
+                        <Image
+                          src={src}
+                          alt={f.books?.title ?? ''}
+                          width={200}
+                          height={300}
+                          className="h-full w-full object-cover"
+                        />
+                      )}
+                    </div>
+                  </Link>
+                </li>
+              );
+            })}
+          </ul>
+        </section>
+      )}
+
+      {/* --- Most liked reviews --- */}
+      {topReviews.length > 0 && (
+        <section className="mt-8">
+          <h2 className="mb-3 text-sm font-semibold uppercase tracking-wide text-slate-400">
+            Most liked reviews
+          </h2>
+          <ul className="space-y-3">
+            {topReviews.map((r: any) => (
+              <li key={r.id} className="rounded-lg border border-stone-200 bg-white p-4">
+                <div className="mb-1 flex items-center justify-between gap-2">
+                  <Link
+                    href={`/book/${r.book_id}`}
+                    className="text-sm font-semibold hover:text-brand hover:underline"
+                  >
+                    {r.books?.title}
+                  </Link>
+                  <span className="flex-shrink-0 text-xs text-stone-500">♥ {r.likes}</span>
+                </div>
+                <p className="whitespace-pre-wrap text-sm text-stone-700">
+                  {r.body.length > 240 ? r.body.slice(0, 240) + '…' : r.body}
+                </p>
+              </li>
+            ))}
+          </ul>
+        </section>
+      )}
 
       {/* --- Shelf --- */}
       {list.length === 0 ? (
