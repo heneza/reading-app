@@ -8,6 +8,46 @@ import { removeFromShelf } from '@/app/actions/shelf';
 
 const RATING_OPTIONS = Array.from({ length: 10 }, (_, i) => (i + 1) * 0.5);
 
+// Small inline icons (no extra library needed)
+function PencilIcon() {
+  return (
+    <svg
+      xmlns="http://www.w3.org/2000/svg"
+      width="16"
+      height="16"
+      viewBox="0 0 24 24"
+      fill="none"
+      stroke="currentColor"
+      strokeWidth="2"
+      strokeLinecap="round"
+      strokeLinejoin="round"
+    >
+      <path d="M12 20h9" />
+      <path d="M16.5 3.5a2.12 2.12 0 0 1 3 3L7 19l-4 1 1-4Z" />
+    </svg>
+  );
+}
+function TrashIcon() {
+  return (
+    <svg
+      xmlns="http://www.w3.org/2000/svg"
+      width="16"
+      height="16"
+      viewBox="0 0 24 24"
+      fill="none"
+      stroke="currentColor"
+      strokeWidth="2"
+      strokeLinecap="round"
+      strokeLinejoin="round"
+    >
+      <polyline points="3 6 5 6 21 6" />
+      <path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2" />
+      <line x1="10" y1="11" x2="10" y2="17" />
+      <line x1="14" y1="11" x2="14" y2="17" />
+    </svg>
+  );
+}
+
 export default async function BookPage({
   params,
   searchParams,
@@ -20,7 +60,6 @@ export default async function BookPage({
     data: { user },
   } = await supabase.auth.getUser();
 
-  // 1. Load the book.
   const { data: book } = await supabase
     .from('books')
     .select('id, title, author, cover_id')
@@ -28,7 +67,6 @@ export default async function BookPage({
     .single();
   if (!book) notFound();
 
-  // 2. This user's rating + shelf status.
   let myRating: number | null = null;
   let onShelf = false;
   if (user) {
@@ -42,7 +80,6 @@ export default async function BookPage({
     onShelf = !!entry;
   }
 
-  // 3. All reviews for this book (newest first), with author names.
   const { data: reviews } = await supabase
     .from('reviews')
     .select('id, user_id, body, spoiler, created_at, profiles ( username, display_name )')
@@ -50,7 +87,6 @@ export default async function BookPage({
     .order('created_at', { ascending: false });
   const reviewList = reviews ?? [];
 
-  // Are we editing one of my reviews? (?edit=<reviewId>)
   const editingId = searchParams?.edit ?? null;
   const editingReview = editingId
     ? reviewList.find((r: any) => r.id === editingId && r.user_id === user?.id)
@@ -113,15 +149,14 @@ export default async function BookPage({
         </div>
       </div>
 
-      {/* --- Write / edit a review (always available, clears after posting) --- */}
+      {/* --- Write / edit a review --- */}
       {user && (
         <section className="mt-8">
           <h2 className="mb-2 text-lg font-semibold">
             {editingReview ? 'Edit your review' : 'Write a review'}
           </h2>
-          <form action={saveReview} className="space-y-2">
+          <form key={`${editingId ?? 'new'}-${reviewList.length}`} action={saveReview} className="space-y-2">
             <input type="hidden" name="bookId" value={book.id} />
-            {/* When editing, this hidden field tells the action which review to update */}
             {editingReview && (
               <input type="hidden" name="reviewId" value={editingReview.id} />
             )}
@@ -173,11 +208,22 @@ export default async function BookPage({
             return (
               <li
                 key={rev.id}
-                className={`rounded border p-4 ${
+                className={`relative rounded border p-4 ${
                   mine ? 'border-brand/40 bg-brand/5' : 'border-slate-200 bg-white'
                 }`}
               >
-                <p className="mb-1 text-sm font-medium">
+                {/* Edit pencil — top-right corner (only on my reviews) */}
+                {mine && (
+                  <Link
+                    href={`/book/${book.id}?edit=${rev.id}`}
+                    title="Edit review"
+                    className="absolute right-3 top-3 text-slate-400 hover:text-brand"
+                  >
+                    <PencilIcon />
+                  </Link>
+                )}
+
+                <p className="mb-1 pr-6 text-sm font-medium">
                   @{rev.profiles?.username ?? 'reader'}
                   {mine && (
                     <span className="ml-2 rounded bg-brand px-2 py-0.5 text-xs text-white">
@@ -192,19 +238,17 @@ export default async function BookPage({
                 </p>
                 <p className="whitespace-pre-wrap text-slate-700">{rev.body}</p>
 
+                {/* Delete trash — bottom-right corner (only on my reviews) */}
                 {mine && (
-                  <div className="mt-2 flex gap-4 text-sm">
-                    <Link
-                      href={`/book/${book.id}?edit=${rev.id}`}
-                      className="text-brand hover:underline"
-                    >
-                      Edit
-                    </Link>
+                  <div className="mt-2 flex justify-end">
                     <form action={deleteReview}>
                       <input type="hidden" name="bookId" value={book.id} />
                       <input type="hidden" name="reviewId" value={rev.id} />
-                      <button className="text-red-600 hover:underline">
-                        Delete
+                      <button
+                        title="Delete review"
+                        className="text-slate-400 hover:text-red-600"
+                      >
+                        <TrashIcon />
                       </button>
                     </form>
                   </div>
