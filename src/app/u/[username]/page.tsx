@@ -13,6 +13,9 @@ const STATUS_LABEL: Record<string, string> = {
 };
 const STATUS_ORDER = ['reading', 'want_to_read', 'read', 'dnf'];
 
+// Always render fresh (no caching) so data and login state are current.
+export const dynamic = 'force-dynamic';
+
 export default async function ProfilePage({
   params,
 }: {

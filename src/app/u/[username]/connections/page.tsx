@@ -19,6 +19,9 @@ async function profilesByIds(
   return (data ?? []) as Person[];
 }
 
+// Always render fresh (no caching) so data and login state are current.
+export const dynamic = 'force-dynamic';
+
 export default async function ConnectionsPage({
   params,
   searchParams,

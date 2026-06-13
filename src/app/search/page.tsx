@@ -14,6 +14,9 @@ function Empty({ children }: { children: React.ReactNode }) {
   );
 }
 
+// Always render fresh (no caching) so data and login state are current.
+export const dynamic = 'force-dynamic';
+
 export default async function SearchPage({
   searchParams,
 }: {

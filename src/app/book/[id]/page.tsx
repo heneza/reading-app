@@ -34,6 +34,9 @@ function TrashIcon() {
   );
 }
 
+// Always render fresh (no caching) so data and login state are current.
+export const dynamic = 'force-dynamic';
+
 export default async function BookPage({
   params,
   searchParams,

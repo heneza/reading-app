@@ -2,6 +2,9 @@ import { redirect } from 'next/navigation';
 import { createClient } from '@/utils/supabase/server';
 import { updateProfile } from '@/app/actions/profile';
 
+// Always render fresh (no caching) so data and login state are current.
+export const dynamic = 'force-dynamic';
+
 export default async function SettingsPage() {
   const supabase = createClient();
   const {
