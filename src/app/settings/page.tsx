@@ -7,8 +7,8 @@ import { timeAgo } from '@/lib/time';
 export const dynamic = 'force-dynamic';
 
 const SUPPORT = [
-  { label: 'nesha — developer', email: 'spada.vanesa@gmail.com' },
-  { label: 'Niki — product & community', email: 'nikistruga111@gmail.com' },
+  { label: 'nesha — Founder / Dev', email: 'spada.vanesa@gmail.com' },
+  { label: 'Niki — Founder / Dev', email: 'nikistruga111@gmail.com' },
 ];
 
 const sectionH = 'mb-3 text-sm font-semibold uppercase tracking-wide text-stone-400';
