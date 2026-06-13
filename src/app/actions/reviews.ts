@@ -83,3 +83,38 @@ export async function reactToReview(formData: FormData) {
 
   revalidatePath(`/book/${bookId}`);
 }
+
+// --- Replies (comments) on reviews ---
+export async function addReviewComment(formData: FormData) {
+  const supabase = createClient();
+  const { data: { user } } = await supabase.auth.getUser();
+  if (!user) redirect('/login');
+
+  const bookId = String(formData.get('bookId'));
+  const reviewId = String(formData.get('reviewId'));
+  const body = String(formData.get('body') ?? '').trim();
+
+  if (body) {
+    await supabase
+      .from('review_comments')
+      .insert({ review_id: reviewId, user_id: user.id, body });
+  }
+  redirect(`/book/${bookId}`);
+}
+
+export async function deleteReviewComment(formData: FormData) {
+  const supabase = createClient();
+  const { data: { user } } = await supabase.auth.getUser();
+  if (!user) redirect('/login');
+
+  const bookId = String(formData.get('bookId'));
+  const commentId = String(formData.get('commentId'));
+
+  await supabase
+    .from('review_comments')
+    .delete()
+    .eq('id', commentId)
+    .eq('user_id', user.id);
+
+  redirect(`/book/${bookId}`);
+}
