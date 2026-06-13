@@ -3,6 +3,7 @@ import Image from 'next/image';
 import { notFound } from 'next/navigation';
 import { createClient } from '@/utils/supabase/server';
 import { coverUrl } from '@/lib/openlibrary';
+import { followUser, unfollowUser } from '@/app/actions/follows';
 
 const STATUS_LABEL: Record<string, string> = {
   want_to_read: 'Want to read',
@@ -18,24 +19,48 @@ export default async function ProfilePage({
   params: { username: string };
 }) {
   const supabase = createClient();
+  const {
+    data: { user },
+  } = await supabase.auth.getUser();
 
-  // Find the profile by username.
   const { data: profile } = await supabase
     .from('profiles')
     .select('id, username, display_name, bio')
     .eq('username', params.username)
     .maybeSingle();
-
   if (!profile) notFound();
 
-  // Their shelf (public, thanks to the new RLS policy).
+  // Shelf
   const { data: entries } = await supabase
     .from('reading_entries')
     .select('status, rating, book_id, books ( title, author, cover_id )')
     .eq('user_id', profile.id)
     .order('updated_at', { ascending: false });
-
   const list = entries ?? [];
+
+  // Follower / following counts (head:true = count only, no rows fetched)
+  const { count: followers } = await supabase
+    .from('follows')
+    .select('*', { count: 'exact', head: true })
+    .eq('followee_id', profile.id);
+  const { count: following } = await supabase
+    .from('follows')
+    .select('*', { count: 'exact', head: true })
+    .eq('follower_id', profile.id);
+
+  // Is the logged-in user already following this profile?
+  const isOwnProfile = user?.id === profile.id;
+  let isFollowing = false;
+  if (user && !isOwnProfile) {
+    const { data } = await supabase
+      .from('follows')
+      .select('follower_id')
+      .eq('follower_id', user.id)
+      .eq('followee_id', profile.id)
+      .maybeSingle();
+    isFollowing = !!data;
+  }
+
   const grouped = STATUS_ORDER.map((status) => ({
     status,
     items: list.filter((e: any) => e.status === status),
@@ -43,14 +68,43 @@ export default async function ProfilePage({
 
   return (
     <div>
-      <h1 className="text-2xl font-bold">
-        {profile.display_name ?? profile.username}
-      </h1>
-      <p className="text-sm text-slate-500">
-        @{profile.username} · {list.length} book{list.length === 1 ? '' : 's'}
-      </p>
-      {profile.bio && <p className="mt-2 text-slate-700">{profile.bio}</p>}
+      {/* --- Profile header --- */}
+      <div className="flex items-start justify-between gap-4">
+        <div>
+          <h1 className="text-2xl font-bold">
+            {profile.display_name ?? profile.username}
+          </h1>
+          <p className="text-sm text-slate-500">@{profile.username}</p>
+          <p className="mt-1 text-sm text-slate-500">
+            <span className="font-medium text-slate-700">{followers ?? 0}</span>{' '}
+            followers ·{' '}
+            <span className="font-medium text-slate-700">{following ?? 0}</span>{' '}
+            following ·{' '}
+            <span className="font-medium text-slate-700">{list.length}</span>{' '}
+            book{list.length === 1 ? '' : 's'}
+          </p>
+          {profile.bio && <p className="mt-2 text-slate-700">{profile.bio}</p>}
+        </div>
 
+        {/* Follow / Unfollow (only on other people's profiles, when logged in) */}
+        {user && !isOwnProfile && (
+          <form action={isFollowing ? unfollowUser : followUser}>
+            <input type="hidden" name="followeeId" value={profile.id} />
+            <input type="hidden" name="username" value={profile.username} />
+            <button
+              className={
+                isFollowing
+                  ? 'rounded-full border border-slate-300 px-4 py-1.5 text-sm font-medium text-slate-700 hover:bg-slate-100'
+                  : 'rounded-full bg-brand px-4 py-1.5 text-sm font-medium text-white hover:opacity-90'
+              }
+            >
+              {isFollowing ? 'Following' : 'Follow'}
+            </button>
+          </form>
+        )}
+      </div>
+
+      {/* --- Shelf --- */}
       {list.length === 0 ? (
         <p className="mt-6 text-slate-500">No books on this shelf yet.</p>
       ) : (
