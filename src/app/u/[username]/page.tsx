@@ -6,6 +6,32 @@ import { coverUrl } from '@/lib/openlibrary';
 import { followUser, unfollowUser } from '@/app/actions/follows';
 import { genreName } from '@/lib/genres';
 
+// Turn @mentions in free text into links to those users' profiles.
+// Only usernames that actually exist (in `valid`) become links.
+function linkifyMentions(text: string, valid: Set<string>): React.ReactNode[] {
+  const parts: React.ReactNode[] = [];
+  const re = /@([a-zA-Z0-9_]+(?:\.[a-zA-Z0-9_]+)*)/g;
+  let last = 0;
+  let key = 0;
+  let m: RegExpExecArray | null;
+  while ((m = re.exec(text)) !== null) {
+    if (m.index > last) parts.push(text.slice(last, m.index));
+    const uname = m[1];
+    if (valid.has(uname)) {
+      parts.push(
+        <Link key={key++} href={`/u/${uname}`} className="font-medium text-brand hover:underline">
+          @{uname}
+        </Link>
+      );
+    } else {
+      parts.push(m[0]);
+    }
+    last = m.index + m[0].length;
+  }
+  if (last < text.length) parts.push(text.slice(last));
+  return parts;
+}
+
 const STATUS_LABEL: Record<string, string> = {
   want_to_read: 'Want to read',
   reading: 'Reading',
@@ -48,6 +74,23 @@ export default async function ProfilePage({
     .select('genre')
     .eq('user_id', profile.id);
   const favGenres = (genreRows ?? []).map((r: any) => r.genre);
+
+  // Resolve @mentions in the bio to real users (so they can be linked).
+  const mentioned = Array.from(
+    new Set(
+      (profile.bio?.match(/@([a-zA-Z0-9_]+(?:\.[a-zA-Z0-9_]+)*)/g) ?? []).map(
+        (t: string) => t.slice(1)
+      )
+    )
+  );
+  let validMentions = new Set<string>();
+  if (mentioned.length) {
+    const { data: mp } = await supabase
+      .from('profiles')
+      .select('username')
+      .in('username', mentioned);
+    validMentions = new Set((mp ?? []).map((r: any) => r.username));
+  }
 
   // Favourite books (Top 4, like Letterboxd).
   const { data: favRows } = await supabase
@@ -138,7 +181,11 @@ export default async function ProfilePage({
             </span>
           </p>
 
-          {profile.bio && <p className="mt-2 text-slate-700">{profile.bio}</p>}
+          {profile.bio && (
+            <p className="mt-2 whitespace-pre-wrap text-slate-700">
+              {linkifyMentions(profile.bio, validMentions)}
+            </p>
+          )}
 
           {/* Social links */}
           {(profile.website || profile.instagram || profile.twitter) && (
