@@ -37,7 +37,7 @@ export default function SearchForm({
           const fd = new FormData(form);
           go(String(fd.get('q') ?? ''), e.currentTarget.value);
         }}
-        className="rounded border border-slate-300 px-2 py-2 text-sm"
+        className="min-w-[7rem]"
       >
         <option value="books">Books</option>
         <option value="authors">Authors</option>

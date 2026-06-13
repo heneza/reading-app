@@ -2,31 +2,31 @@ import type { Config } from 'tailwindcss';
 
 // =====================================================================
 // DESIGN TOKENS — change these few values to re-skin the whole app.
-// Palette: Blue & periwinkle (soft / pastel).
+// Palette: deep red / burgundy on warm off-white.
 // =====================================================================
 const config: Config = {
   content: ['./src/**/*.{ts,tsx}'],
   theme: {
     extend: {
       colors: {
-        // Page background (soft periwinkle-tinted off-white)
-        page: '#f4f7ff',
+        // Page background (warm off-white so the deep red pops)
+        page: '#f7f4f2',
 
-        // Primary brand blue — used by buttons, links, accents.
+        // Primary brand — deep red / burgundy.
         brand: {
-          DEFAULT: '#4f86e0', // main blue
-          dark: '#3a6fc4',    // hover / pressed
-          soft: '#eaf1fc',    // tinted fills & hover backgrounds
+          DEFAULT: '#8a1730', // main deep red
+          dark: '#6b1126',    // hover / pressed
+          soft: '#f6e9ec',    // tinted fills & hover backgrounds
         },
 
-        // Periwinkle accent — soft secondary fills.
-        periwinkle: {
-          DEFAULT: '#a5b4fc',
-          soft: '#e8ebff',
+        // Soft rose accent — focus rings & subtle highlights.
+        accent: {
+          DEFAULT: '#cf9aa6',
+          soft: '#f3e4e7',
         },
       },
 
-      // Use the Inter font loaded in layout.tsx (Claude-like clean sans).
+      // Bookish serif (Claude-style), loaded in layout.tsx.
       fontFamily: {
         sans: ['var(--font-sans)', 'ui-serif', 'Georgia', 'Cambria', 'serif'],
       },
@@ -40,9 +40,9 @@ const config: Config = {
         '2xl': '1.5rem',
       },
 
-      // Gentle card shadow tinted with the brand blue.
+      // Gentle card shadow tinted with the brand red.
       boxShadow: {
-        card: '0 1px 2px rgba(16,24,40,0.04), 0 6px 20px rgba(79,134,224,0.07)',
+        card: '0 1px 2px rgba(16,24,40,0.04), 0 6px 20px rgba(138,23,48,0.07)',
       },
     },
   },

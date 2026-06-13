@@ -86,11 +86,11 @@ export default async function BookPage({ params }: { params: { id: string } }) {
             <form action={saveRating} className="flex items-center gap-2">
               <input type="hidden" name="bookId" value={book.id} />
               <label className="text-sm text-slate-600">Your rating:</label>
-              <select name="rating" defaultValue={myRating ?? ''} className="rounded border border-slate-300 px-2 py-1 text-sm">
+              <select name="rating" defaultValue={myRating ?? ''} className="min-w-[4.5rem]">
                 <option value="">—</option>
                 {RATING_OPTIONS.map((r) => <option key={r} value={r}>{r.toFixed(1)} ★</option>)}
               </select>
-              <button className="rounded bg-brand px-3 py-1 text-sm font-medium text-white hover:opacity-90">Save</button>
+              <button className="rounded bg-brand px-4 py-2 text-sm font-medium text-white transition hover:bg-brand-dark">Save</button>
             </form>
           ) : (
             <p className="text-sm text-slate-400">Log in to rate this book.</p>

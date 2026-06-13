@@ -25,7 +25,7 @@ export default async function Nav() {
     <header className="sticky top-0 z-20 border-b border-slate-200/70 bg-white/80 backdrop-blur">
       <nav className="mx-auto flex max-w-[880px] items-center gap-3 px-5 py-3">
         <Link href="/" className="whitespace-nowrap text-lg font-bold text-brand">
-          📚 Reading App
+          Reading App
         </Link>
 
         {/* Header search box — submits to the search page */}
