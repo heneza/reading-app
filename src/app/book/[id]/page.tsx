@@ -5,45 +5,20 @@ import { createClient } from '@/utils/supabase/server';
 import { coverUrl } from '@/lib/openlibrary';
 import {
   saveRating,
-  deleteReview,
   reactToReview,
   addReviewComment,
   deleteReviewComment,
 } from '@/app/actions/reviews';
 import ReviewForm from './ReviewForm';
+import ReviewItem from './ReviewItem';
 import { removeFromShelf } from '@/app/actions/shelf';
 
 const RATING_OPTIONS = Array.from({ length: 10 }, (_, i) => (i + 1) * 0.5);
 
-function PencilIcon() {
-  return (
-    <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24"
-      fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-      <path d="M12 20h9" /><path d="M16.5 3.5a2.12 2.12 0 0 1 3 3L7 19l-4 1 1-4Z" />
-    </svg>
-  );
-}
-function TrashIcon() {
-  return (
-    <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24"
-      fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-      <polyline points="3 6 5 6 21 6" />
-      <path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2" />
-      <line x1="10" y1="11" x2="10" y2="17" /><line x1="14" y1="11" x2="14" y2="17" />
-    </svg>
-  );
-}
-
 // Always render fresh (no caching) so data and login state are current.
 export const dynamic = 'force-dynamic';
 
-export default async function BookPage({
-  params,
-  searchParams,
-}: {
-  params: { id: string };
-  searchParams: { edit?: string; reviewError?: string };
-}) {
+export default async function BookPage({ params }: { params: { id: string } }) {
   const supabase = createClient();
   const { data: { user } } = await supabase.auth.getUser();
 
@@ -61,7 +36,7 @@ export default async function BookPage({
     onShelf = !!entry;
   }
 
-  const { data: reviews } = await supabase
+  const { data: reviews, error: reviewsError } = await supabase
     .from('reviews')
     .select('id, user_id, body, spoiler, created_at, profiles ( username, display_name )')
     .eq('book_id', book.id)
@@ -91,11 +66,6 @@ export default async function BookPage({
       (profs ?? []).forEach((p: any) => nameById.set(p.id, p.username));
     }
   }
-
-  const editingId = searchParams?.edit ?? null;
-  const editingReview = editingId
-    ? reviewList.find((r: any) => r.id === editingId && r.user_id === user?.id)
-    : null;
 
   const cover = coverUrl(book.cover_id, 'L');
 
@@ -131,30 +101,28 @@ export default async function BookPage({
         </div>
       </div>
 
-      {searchParams?.reviewError && (
-        <p className="mt-6 rounded border border-red-300 bg-red-50 p-3 text-sm text-red-700">
-          Could not post review: {searchParams.reviewError}
-        </p>
-      )}
-
-      {/* --- Write / edit a review --- */}
+      {/* --- Write a review --- */}
       {user && (
         <section className="mt-8">
-          <h2 className="mb-2 text-lg font-semibold">{editingReview ? 'Edit your review' : 'Write a review'}</h2>
-          <ReviewForm
-            bookId={book.id}
-            editingReviewId={editingReview?.id ?? null}
-            defaultBody={editingReview?.body ?? ''}
-            defaultSpoiler={editingReview?.spoiler ?? false}
-            isEditing={!!editingReview}
-          />
+          <h2 className="mb-2 text-lg font-semibold">Write a review</h2>
+          <ReviewForm bookId={book.id} />
         </section>
       )}
 
       {/* --- All reviews --- */}
       <section className="mt-8">
         <h2 className="mb-3 text-lg font-semibold">Reviews ({reviewList.length})</h2>
-        {reviewList.length === 0 && <p className="text-slate-500">No reviews yet. Be the first.</p>}
+
+        {reviewsError && (
+          <p className="mb-3 rounded border border-red-300 bg-red-50 p-3 text-sm text-red-700">
+            Could not load reviews: {reviewsError.message}
+          </p>
+        )}
+
+        {reviewList.length === 0 && !reviewsError && (
+          <p className="text-slate-500">No reviews yet. Be the first.</p>
+        )}
+
         <ul className="space-y-4">
           {reviewList.map((rev: any) => {
             const mine = rev.user_id === user?.id;
@@ -165,20 +133,15 @@ export default async function BookPage({
             const revComments = comments.filter((c) => c.review_id === rev.id);
 
             return (
-              <li key={rev.id} className={`relative rounded border p-4 ${mine ? 'border-brand/40 bg-brand/5' : 'border-slate-200 bg-white'}`}>
-                {mine && (
-                  <Link href={`/book/${book.id}?edit=${rev.id}`} title="Edit review" className="absolute right-3 top-3 text-slate-400 hover:text-brand">
-                    <PencilIcon />
-                  </Link>
-                )}
-
-                <p className="mb-1 pr-6 text-sm font-medium">
-                  <Link href={`/u/${rev.profiles?.username}`} className="hover:underline">@{rev.profiles?.username ?? 'reader'}</Link>
-                  {mine && <span className="ml-2 rounded bg-brand px-2 py-0.5 text-xs text-white">you</span>}
-                  {rev.spoiler && <span className="ml-2 rounded bg-amber-100 px-2 py-0.5 text-xs text-amber-700">spoiler</span>}
-                </p>
-                <p className="whitespace-pre-wrap text-slate-700">{rev.body}</p>
-
+              <ReviewItem
+                key={rev.id}
+                bookId={book.id}
+                reviewId={rev.id}
+                username={rev.profiles?.username ?? null}
+                body={rev.body}
+                spoiler={rev.spoiler}
+                mine={mine}
+              >
                 {/* like / dislike */}
                 <div className="mt-3 flex items-center gap-3 text-sm">
                   <form action={reactToReview}>
@@ -193,13 +156,6 @@ export default async function BookPage({
                     <input type="hidden" name="type" value="dislike" />
                     <button className={`rounded-full border px-3 py-1 ${myReaction === 'dislike' ? 'border-slate-700 bg-slate-700 text-white' : 'border-slate-300 text-slate-600 hover:bg-slate-100'}`}>👎 {dislikers.length}</button>
                   </form>
-                  {mine && (
-                    <form action={deleteReview} className="ml-auto">
-                      <input type="hidden" name="bookId" value={book.id} />
-                      <input type="hidden" name="reviewId" value={rev.id} />
-                      <button title="Delete review" className="text-slate-400 hover:text-red-600"><TrashIcon /></button>
-                    </form>
-                  )}
                 </div>
 
                 {likers.length > 0 && (
@@ -252,7 +208,7 @@ export default async function BookPage({
                     </form>
                   )}
                 </div>
-              </li>
+              </ReviewItem>
             );
           })}
         </ul>

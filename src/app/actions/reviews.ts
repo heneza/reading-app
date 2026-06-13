@@ -4,6 +4,7 @@ import { revalidatePath } from 'next/cache';
 import { redirect } from 'next/navigation';
 import { createClient } from '@/utils/supabase/server';
 
+// --- Rating -----------------------------------------------------------
 export async function saveRating(formData: FormData) {
   const supabase = createClient();
   const { data: { user } } = await supabase.auth.getUser();
@@ -20,57 +21,62 @@ export async function saveRating(formData: FormData) {
   revalidatePath(`/book/${bookId}`);
 }
 
-// Surfaces any failure as ?reviewError=... on the book page so it's visible.
-export async function saveReview(formData: FormData) {
+// --- Reviews ----------------------------------------------------------
+// Create a new review, or update an existing one when reviewId is given.
+// Returns { error } (string or null) so the client form can show failures
+// on screen instead of silently doing nothing.
+export async function submitReview(input: {
+  bookId: string;
+  reviewId?: string | null;
+  body: string;
+  spoiler: boolean;
+}): Promise<{ error: string | null }> {
   const supabase = createClient();
   const { data: { user } } = await supabase.auth.getUser();
-  const bookId = String(formData.get('bookId'));
+  if (!user) return { error: 'You are not signed in.' };
 
-  if (!user) {
-    redirect(`/book/${bookId}?reviewError=${encodeURIComponent('No user session on server')}`);
-  }
+  const body = input.body.trim();
+  if (!body) return { error: 'Please write something first.' };
 
-  const reviewId = formData.get('reviewId') ? String(formData.get('reviewId')) : null;
-  const body = String(formData.get('body') ?? '').trim();
-  const spoiler = formData.get('spoiler') === 'on';
-
-  if (!body) {
-    redirect(`/book/${bookId}?reviewError=${encodeURIComponent('Review text was empty')}`);
-  }
-
-  if (reviewId) {
+  if (input.reviewId) {
     const { error } = await supabase
       .from('reviews')
-      .update({ body, spoiler })
-      .eq('id', reviewId)
+      .update({ body, spoiler: input.spoiler })
+      .eq('id', input.reviewId)
       .eq('user_id', user.id);
-    if (error) {
-      redirect(`/book/${bookId}?reviewError=${encodeURIComponent(error.message)}`);
-    }
+    if (error) return { error: error.message };
   } else {
     const { error } = await supabase
       .from('reviews')
-      .insert({ user_id: user.id, book_id: bookId, body, spoiler });
-    if (error) {
-      redirect(`/book/${bookId}?reviewError=${encodeURIComponent(error.message)}`);
-    }
+      .insert({ user_id: user.id, book_id: input.bookId, body, spoiler: input.spoiler });
+    if (error) return { error: error.message };
   }
 
-  redirect(`/book/${bookId}`);
+  revalidatePath(`/book/${input.bookId}`);
+  return { error: null };
 }
 
-export async function deleteReview(formData: FormData) {
+// Delete one of your own reviews. Returns { error } like submitReview.
+export async function removeReview(input: {
+  bookId: string;
+  reviewId: string;
+}): Promise<{ error: string | null }> {
   const supabase = createClient();
   const { data: { user } } = await supabase.auth.getUser();
-  if (!user) redirect('/login');
+  if (!user) return { error: 'You are not signed in.' };
 
-  const bookId = String(formData.get('bookId'));
-  const reviewId = String(formData.get('reviewId'));
+  const { error } = await supabase
+    .from('reviews')
+    .delete()
+    .eq('id', input.reviewId)
+    .eq('user_id', user.id);
+  if (error) return { error: error.message };
 
-  await supabase.from('reviews').delete().eq('id', reviewId).eq('user_id', user.id);
-  redirect(`/book/${bookId}`);
+  revalidatePath(`/book/${input.bookId}`);
+  return { error: null };
 }
 
+// --- Reactions (like / dislike) --------------------------------------
 export async function reactToReview(formData: FormData) {
   const supabase = createClient();
   const { data: { user } } = await supabase.auth.getUser();
@@ -96,6 +102,7 @@ export async function reactToReview(formData: FormData) {
   revalidatePath(`/book/${bookId}`);
 }
 
+// --- Replies (comments) ----------------------------------------------
 export async function addReviewComment(formData: FormData) {
   const supabase = createClient();
   const { data: { user } } = await supabase.auth.getUser();
@@ -108,7 +115,7 @@ export async function addReviewComment(formData: FormData) {
   if (body) {
     await supabase.from('review_comments').insert({ review_id: reviewId, user_id: user.id, body });
   }
-  redirect(`/book/${bookId}`);
+  revalidatePath(`/book/${bookId}`);
 }
 
 export async function deleteReviewComment(formData: FormData) {
@@ -120,38 +127,5 @@ export async function deleteReviewComment(formData: FormData) {
   const commentId = String(formData.get('commentId'));
 
   await supabase.from('review_comments').delete().eq('id', commentId).eq('user_id', user.id);
-  redirect(`/book/${bookId}`);
-}
-
-// Client-friendly: returns an error string instead of redirecting, so a
-// client component can display it. Used by the ReviewForm component.
-export async function submitReview(input: {
-  bookId: string;
-  reviewId?: string | null;
-  body: string;
-  spoiler: boolean;
-}): Promise<{ error: string | null }> {
-  const supabase = createClient();
-  const { data: { user } } = await supabase.auth.getUser();
-  if (!user) return { error: 'You are not signed in on the server (session not found).' };
-
-  const body = input.body.trim();
-  if (!body) return { error: 'Please write something first.' };
-
-  if (input.reviewId) {
-    const { error } = await supabase
-      .from('reviews')
-      .update({ body, spoiler: input.spoiler })
-      .eq('id', input.reviewId)
-      .eq('user_id', user.id);
-    if (error) return { error: error.message };
-  } else {
-    const { error } = await supabase
-      .from('reviews')
-      .insert({ user_id: user.id, book_id: input.bookId, body, spoiler: input.spoiler });
-    if (error) return { error: error.message };
-  }
-
-  revalidatePath(`/book/${input.bookId}`);
-  return { error: null };
+  revalidatePath(`/book/${bookId}`);
 }
