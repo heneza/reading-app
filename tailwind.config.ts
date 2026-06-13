@@ -28,7 +28,7 @@ const config: Config = {
 
       // Use the Inter font loaded in layout.tsx (Claude-like clean sans).
       fontFamily: {
-        sans: ['var(--font-sans)', 'ui-sans-serif', 'system-ui', 'sans-serif'],
+        sans: ['var(--font-sans)', 'ui-serif', 'Georgia', 'Cambria', 'serif'],
       },
 
       // Softer corners everywhere (bare `rounded` -> 10px).

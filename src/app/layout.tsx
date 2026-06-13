@@ -1,11 +1,12 @@
 import type { Metadata } from 'next';
-import { Inter } from 'next/font/google';
+import { Source_Serif_4 } from 'next/font/google';
 import './globals.css';
 import Nav from '@/components/Nav';
 
-// Clean, Claude-like sans. Exposed as the --font-sans CSS variable that
-// tailwind.config.ts points `font-sans` at.
-const inter = Inter({
+// The warm, readable serif Claude's replies are set in (free stand-in for
+// the proprietary Tiempos). Exposed as --font-sans, which tailwind's
+// `font-sans` points at — so changing this one import re-fonts the app.
+const bodyFont = Source_Serif_4({
   subsets: ['latin'],
   variable: '--font-sans',
   display: 'swap',
@@ -22,7 +23,7 @@ export default function RootLayout({
   children: React.ReactNode;
 }) {
   return (
-    <html lang="en" className={inter.variable}>
+    <html lang="en" className={bodyFont.variable}>
       <body className="font-sans">
         <Nav />
         <main className="mx-auto max-w-[880px] px-5 py-8">{children}</main>
