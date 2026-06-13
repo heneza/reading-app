@@ -43,9 +43,10 @@ export default async function HomePage() {
     .eq('id', user.id)
     .single();
 
+  // NOTE: we now also select book_id, so we can link each cover to /book/[id]
   const { data: entries } = await supabase
     .from('reading_entries')
-    .select('status, rating, books ( title, author, cover_id )')
+    .select('status, rating, book_id, books ( title, author, cover_id )')
     .eq('user_id', user.id)
     .order('updated_at', { ascending: false });
 
@@ -84,24 +85,28 @@ export default async function HomePage() {
                 {group.items.map((e: any, i: number) => {
                   const src = coverUrl(e.books?.cover_id, 'M');
                   return (
-                    <li key={i} className="flex flex-col">
-                      <div className="aspect-[2/3] w-full overflow-hidden rounded bg-slate-100">
-                        {src && (
-                          <Image
-                            src={src}
-                            alt={e.books?.title ?? ''}
-                            width={200}
-                            height={300}
-                            className="h-full w-full object-cover"
-                          />
-                        )}
-                      </div>
-                      <p className="mt-1 truncate text-sm font-medium">
-                        {e.books?.title}
-                      </p>
-                      <p className="truncate text-xs text-slate-500">
-                        {e.books?.author}
-                      </p>
+                    <li key={i}>
+                      {/* Each cover now links to the book's detail page */}
+                      <Link href={`/book/${e.book_id}`} className="flex flex-col group">
+                        <div className="aspect-[2/3] w-full overflow-hidden rounded bg-slate-100 group-hover:opacity-90">
+                          {src && (
+                            <Image
+                              src={src}
+                              alt={e.books?.title ?? ''}
+                              width={200}
+                              height={300}
+                              className="h-full w-full object-cover"
+                            />
+                          )}
+                        </div>
+                        <p className="mt-1 truncate text-sm font-medium">
+                          {e.books?.title}
+                        </p>
+                        <p className="truncate text-xs text-slate-500">
+                          {e.books?.author}
+                          {e.rating ? ` · ${Number(e.rating).toFixed(1)}★` : ''}
+                        </p>
+                      </Link>
                     </li>
                   );
                 })}

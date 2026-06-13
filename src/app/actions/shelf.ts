@@ -43,3 +43,26 @@ export async function addToShelf(formData: FormData) {
   revalidatePath('/');
   redirect('/');
 }
+
+// Removes a book from the current user's shelf (deletes their reading entry).
+export async function removeFromShelf(formData: FormData) {
+  const supabase = createClient();
+  const {
+    data: { user },
+  } = await supabase.auth.getUser();
+
+  if (!user) redirect('/login');
+
+  const bookId = String(formData.get('bookId'));
+
+  // .delete() removes rows that match. The .eq() filters make sure we only
+  // ever delete THIS user's entry for THIS book — and RLS enforces it too.
+  await supabase
+    .from('reading_entries')
+    .delete()
+    .eq('user_id', user.id)
+    .eq('book_id', bookId);
+
+  revalidatePath('/');
+  redirect('/');
+}
