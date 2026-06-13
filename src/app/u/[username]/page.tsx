@@ -25,7 +25,7 @@ export default async function ProfilePage({
 
   const { data: profile } = await supabase
     .from('profiles')
-    .select('id, username, display_name, bio')
+    .select('id, username, display_name, bio, website, twitter, instagram')
     .eq('username', params.username)
     .maybeSingle();
   if (!profile) notFound();
@@ -38,56 +38,112 @@ export default async function ProfilePage({
     .order('updated_at', { ascending: false });
   const list = entries ?? [];
 
-  // Follower / following counts (head:true = count only, no rows fetched)
-  const { count: followers } = await supabase
+  // Follow graph: who follows them, who they follow (used for counts + friends)
+  const { data: followerRows } = await supabase
     .from('follows')
-    .select('*', { count: 'exact', head: true })
+    .select('follower_id')
     .eq('followee_id', profile.id);
-  const { count: following } = await supabase
+  const { data: followingRows } = await supabase
     .from('follows')
-    .select('*', { count: 'exact', head: true })
+    .select('followee_id')
     .eq('follower_id', profile.id);
+  const followerIds = (followerRows ?? []).map((r: any) => r.follower_id);
+  const followingSet = new Set((followingRows ?? []).map((r: any) => r.followee_id));
+  const friendCount = followerIds.filter((id: string) => followingSet.has(id)).length;
 
-  // Is the logged-in user already following this profile?
   const isOwnProfile = user?.id === profile.id;
-  let isFollowing = false;
-  if (user && !isOwnProfile) {
-    const { data } = await supabase
-      .from('follows')
-      .select('follower_id')
-      .eq('follower_id', user.id)
-      .eq('followee_id', profile.id)
-      .maybeSingle();
-    isFollowing = !!data;
-  }
+  const isFollowing = !!user && !isOwnProfile && followerIds.includes(user.id);
 
   const grouped = STATUS_ORDER.map((status) => ({
     status,
     items: list.filter((e: any) => e.status === status),
   })).filter((g) => g.items.length > 0);
 
+  const connHref = (t: string) =>
+    `/u/${profile.username}/connections?type=${t}`;
+
   return (
     <div>
       {/* --- Profile header --- */}
       <div className="flex items-start justify-between gap-4">
-        <div>
+        <div className="min-w-0">
           <h1 className="text-2xl font-bold">
             {profile.display_name ?? profile.username}
           </h1>
           <p className="text-sm text-slate-500">@{profile.username}</p>
-          <p className="mt-1 text-sm text-slate-500">
-            <span className="font-medium text-slate-700">{followers ?? 0}</span>{' '}
-            followers ·{' '}
-            <span className="font-medium text-slate-700">{following ?? 0}</span>{' '}
-            following ·{' '}
-            <span className="font-medium text-slate-700">{list.length}</span>{' '}
-            book{list.length === 1 ? '' : 's'}
+
+          {/* Clickable counts */}
+          <p className="mt-1 flex flex-wrap gap-x-3 text-sm text-slate-500">
+            <Link href={connHref('followers')} className="hover:text-brand">
+              <span className="font-medium text-slate-700">
+                {followerIds.length}
+              </span>{' '}
+              followers
+            </Link>
+            <Link href={connHref('following')} className="hover:text-brand">
+              <span className="font-medium text-slate-700">
+                {followingSet.size}
+              </span>{' '}
+              following
+            </Link>
+            <Link href={connHref('friends')} className="hover:text-brand">
+              <span className="font-medium text-slate-700">{friendCount}</span>{' '}
+              friends
+            </Link>
+            <span>
+              <span className="font-medium text-slate-700">{list.length}</span>{' '}
+              book{list.length === 1 ? '' : 's'}
+            </span>
           </p>
+
           {profile.bio && <p className="mt-2 text-slate-700">{profile.bio}</p>}
+
+          {/* Social links */}
+          {(profile.website || profile.instagram || profile.twitter) && (
+            <p className="mt-2 flex flex-wrap gap-3 text-sm">
+              {profile.website && (
+                <a
+                  href={profile.website}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="text-brand hover:underline"
+                >
+                  Website
+                </a>
+              )}
+              {profile.instagram && (
+                <a
+                  href={`https://instagram.com/${profile.instagram}`}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="text-brand hover:underline"
+                >
+                  Instagram
+                </a>
+              )}
+              {profile.twitter && (
+                <a
+                  href={`https://x.com/${profile.twitter}`}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="text-brand hover:underline"
+                >
+                  X
+                </a>
+              )}
+            </p>
+          )}
         </div>
 
-        {/* Follow / Unfollow (only on other people's profiles, when logged in) */}
-        {user && !isOwnProfile && (
+        {/* Edit (own) or Follow/Unfollow (others) */}
+        {isOwnProfile ? (
+          <Link
+            href="/settings"
+            className="whitespace-nowrap rounded-full border border-slate-300 px-4 py-1.5 text-sm font-medium text-slate-700 hover:bg-slate-100"
+          >
+            Edit profile
+          </Link>
+        ) : user ? (
           <form action={isFollowing ? unfollowUser : followUser}>
             <input type="hidden" name="followeeId" value={profile.id} />
             <input type="hidden" name="username" value={profile.username} />
@@ -101,7 +157,7 @@ export default async function ProfilePage({
               {isFollowing ? 'Following' : 'Follow'}
             </button>
           </form>
-        )}
+        ) : null}
       </div>
 
       {/* --- Shelf --- */}

@@ -4,6 +4,12 @@ import { revalidatePath } from 'next/cache';
 import { redirect } from 'next/navigation';
 import { createClient } from '@/utils/supabase/server';
 
+async function refresh(formData: FormData, username: string) {
+  const redirectTo = formData.get('redirectTo');
+  if (redirectTo) redirect(String(redirectTo));
+  revalidatePath(`/u/${username}`);
+}
+
 export async function followUser(formData: FormData) {
   const supabase = createClient();
   const {
@@ -18,7 +24,7 @@ export async function followUser(formData: FormData) {
     .from('follows')
     .insert({ follower_id: user.id, followee_id: followeeId });
 
-  revalidatePath(`/u/${username}`);
+  await refresh(formData, username);
 }
 
 export async function unfollowUser(formData: FormData) {
@@ -37,5 +43,5 @@ export async function unfollowUser(formData: FormData) {
     .eq('follower_id', user.id)
     .eq('followee_id', followeeId);
 
-  revalidatePath(`/u/${username}`);
+  await refresh(formData, username);
 }
