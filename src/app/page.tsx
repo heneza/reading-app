@@ -2,6 +2,7 @@ import Link from 'next/link';
 import Image from 'next/image';
 import { createClient } from '@/utils/supabase/server';
 import { coverUrl } from '@/lib/openlibrary';
+import Avatar from '@/components/Avatar';
 
 export const dynamic = 'force-dynamic';
 
@@ -137,6 +138,7 @@ export default async function ExplorePage() {
   };
   let activity: Activity[] = [];
   const nameById = new Map<string, string>();
+  const avatarById = new Map<string, string | null>();
 
   if (followingIds.length) {
     const [{ data: shelfRows }, { data: reviewRows }] = await Promise.all([
@@ -180,9 +182,12 @@ export default async function ExplorePage() {
     if (ids.length) {
       const { data: profs } = await supabase
         .from('profiles')
-        .select('id, username')
+        .select('id, username, avatar_url')
         .in('id', ids);
-      (profs ?? []).forEach((p: any) => nameById.set(p.id, p.username));
+      (profs ?? []).forEach((p: any) => {
+        nameById.set(p.id, p.username);
+        avatarById.set(p.id, p.avatar_url);
+      });
     }
   }
 
@@ -259,6 +264,7 @@ export default async function ExplorePage() {
                   key={i}
                   className="flex items-center gap-3 rounded-lg border border-stone-200 bg-white p-3 text-sm"
                 >
+                  <Avatar src={avatarById.get(a.userId) ?? null} name={uname} size={36} />
                   <div className="h-12 w-8 flex-shrink-0 overflow-hidden rounded bg-slate-100">
                     {coverUrl(a.book?.cover_id, 'S') && (
                       <Image
@@ -270,7 +276,7 @@ export default async function ExplorePage() {
                       />
                     )}
                   </div>
-                  <p className="min-w-0 text-stone-700">
+                  <p className="min-w-0 flex-1 text-stone-700">
                     <Link href={`/u/${uname}`} className="font-medium hover:text-brand hover:underline">
                       @{uname}
                     </Link>{' '}

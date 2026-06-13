@@ -67,6 +67,7 @@ export default async function BookPage({ params }: { params: { id: string } }) {
   let reactions: any[] = [];
   let comments: any[] = [];
   const nameById = new Map<string, string>();
+  const avatarById = new Map<string, string | null>();
 
   if (reviewIds.length) {
     const [{ data: rx }, { data: cm }] = await Promise.all([
@@ -84,8 +85,11 @@ export default async function BookPage({ params }: { params: { id: string } }) {
       ...comments.map((c) => c.user_id),
     ]));
     if (ids.length) {
-      const { data: profs } = await supabase.from('profiles').select('id, username').in('id', ids);
-      (profs ?? []).forEach((p: any) => nameById.set(p.id, p.username));
+      const { data: profs } = await supabase.from('profiles').select('id, username, avatar_url').in('id', ids);
+      (profs ?? []).forEach((p: any) => {
+        nameById.set(p.id, p.username);
+        avatarById.set(p.id, p.avatar_url);
+      });
     }
   }
 
@@ -169,6 +173,7 @@ export default async function BookPage({ params }: { params: { id: string } }) {
                 bookId={book.id}
                 reviewId={rev.id}
                 username={nameById.get(rev.user_id) ?? null}
+                avatarUrl={avatarById.get(rev.user_id) ?? null}
                 body={rev.body}
                 spoiler={rev.spoiler}
                 mine={mine}

@@ -2,9 +2,10 @@ import Link from 'next/link';
 import { notFound } from 'next/navigation';
 import { createClient } from '@/utils/supabase/server';
 import { followUser, unfollowUser } from '@/app/actions/follows';
+import Avatar from '@/components/Avatar';
 
 type ConnType = 'followers' | 'following' | 'friends';
-type Person = { id: string; username: string; display_name: string | null };
+type Person = { id: string; username: string; display_name: string | null; avatar_url: string | null };
 
 // Fetch profile rows for a set of ids.
 async function profilesByIds(
@@ -14,7 +15,7 @@ async function profilesByIds(
   if (ids.length === 0) return [];
   const { data } = await supabase
     .from('profiles')
-    .select('id, username, display_name')
+    .select('id, username, display_name, avatar_url')
     .in('id', ids);
   return (data ?? []) as Person[];
 }
@@ -116,14 +117,17 @@ export default async function ConnectionsPage({
                 key={p.id}
                 className="flex items-center justify-between rounded border border-slate-200 bg-white p-3"
               >
-                <Link href={`/u/${p.username}`} className="min-w-0">
-                  <span className="font-medium hover:text-brand">
-                    {p.display_name ?? p.username}
-                  </span>
-                  <span className="ml-2 text-sm text-slate-500">
-                    @{p.username}
-                  </span>
-                </Link>
+                <div className="flex min-w-0 items-center gap-3">
+                  <Avatar src={p.avatar_url} name={p.display_name ?? p.username} size={40} />
+                  <Link href={`/u/${p.username}`} className="min-w-0">
+                    <span className="font-medium hover:text-brand">
+                      {p.display_name ?? p.username}
+                    </span>
+                    <span className="ml-2 text-sm text-slate-500">
+                      @{p.username}
+                    </span>
+                  </Link>
+                </div>
 
                 {user && !isMe && (
                   <form action={iFollow ? unfollowUser : followUser}>

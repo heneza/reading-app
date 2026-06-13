@@ -3,6 +3,8 @@ import { createClient } from '@/utils/supabase/server';
 import { updateProfile } from '@/app/actions/profile';
 import GenrePicker from './GenrePicker';
 import FavoritesPicker from './FavoritesPicker';
+import UsernameForm from './UsernameForm';
+import AvatarUploader from './AvatarUploader';
 
 // Always render fresh (no caching) so data and login state are current.
 export const dynamic = 'force-dynamic';
@@ -16,7 +18,7 @@ export default async function SettingsPage() {
 
   const { data: profile } = await supabase
     .from('profiles')
-    .select('username, display_name, bio, website, twitter, instagram')
+    .select('username, display_name, bio, website, twitter, instagram, avatar_url, username_changed_at')
     .eq('id', user.id)
     .maybeSingle();
 
@@ -25,6 +27,17 @@ export default async function SettingsPage() {
     .select('genre')
     .eq('user_id', user.id);
   const selectedGenres = (myGenres ?? []).map((r: any) => r.genre);
+
+  // Username cooldown (7 days between changes).
+  let usernameLocked = false;
+  let daysLeft = 0;
+  if (profile?.username_changed_at) {
+    const days = (Date.now() - new Date(profile.username_changed_at).getTime()) / 86400000;
+    if (days < 7) {
+      usernameLocked = true;
+      daysLeft = Math.ceil(7 - days);
+    }
+  }
 
   // Shelf books (to choose favourites from) + current favourites.
   const { data: shelfEntries } = await supabase
@@ -49,6 +62,25 @@ export default async function SettingsPage() {
       <h1 className="mb-1 text-2xl font-bold">Edit profile</h1>
       <p className="mb-6 text-sm text-slate-500">@{profile?.username}</p>
 
+      <section className="mb-8">
+        <h2 className="mb-3 text-lg font-semibold">Profile photo</h2>
+        <AvatarUploader
+          userId={user.id}
+          currentUrl={profile?.avatar_url ?? null}
+          name={profile?.display_name ?? profile?.username ?? 'you'}
+        />
+      </section>
+
+      <section className="mb-8 border-t border-stone-200 pt-8">
+        <h2 className="mb-3 text-lg font-semibold">Username</h2>
+        <UsernameForm
+          current={profile?.username ?? ''}
+          locked={usernameLocked}
+          daysLeft={daysLeft}
+        />
+      </section>
+
+      <h2 className="mb-3 border-t border-stone-200 pt-8 text-lg font-semibold">Profile details</h2>
       <form action={updateProfile} className="space-y-4">
         <div>
           <label className="mb-1 block text-sm font-medium">Display name</label>

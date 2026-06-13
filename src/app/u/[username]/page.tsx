@@ -5,6 +5,7 @@ import { createClient } from '@/utils/supabase/server';
 import { coverUrl } from '@/lib/openlibrary';
 import { followUser, unfollowUser } from '@/app/actions/follows';
 import { genreName } from '@/lib/genres';
+import Avatar from '@/components/Avatar';
 
 // Turn @mentions in free text into links to those users' profiles.
 // Only usernames that actually exist (in `valid`) become links.
@@ -55,7 +56,7 @@ export default async function ProfilePage({
 
   const { data: profile } = await supabase
     .from('profiles')
-    .select('id, username, display_name, bio, website, twitter, instagram')
+    .select('id, username, display_name, bio, website, twitter, instagram, avatar_url')
     .eq('username', params.username)
     .maybeSingle();
   if (!profile) notFound();
@@ -151,7 +152,13 @@ export default async function ProfilePage({
     <div>
       {/* --- Profile header --- */}
       <div className="flex items-start justify-between gap-4">
-        <div className="min-w-0">
+        <div className="flex min-w-0 items-start gap-4">
+          <Avatar
+            src={profile.avatar_url}
+            name={profile.display_name ?? profile.username}
+            size={72}
+          />
+          <div className="min-w-0">
           <h1 className="text-2xl font-bold">
             {profile.display_name ?? profile.username}
           </h1>
@@ -235,6 +242,7 @@ export default async function ProfilePage({
               ))}
             </div>
           )}
+          </div>
         </div>
 
         {/* Edit (own) or Follow/Unfollow (others) */}

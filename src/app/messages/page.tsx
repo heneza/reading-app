@@ -1,6 +1,7 @@
 import Link from 'next/link';
 import { redirect } from 'next/navigation';
 import { createClient } from '@/utils/supabase/server';
+import Avatar from '@/components/Avatar';
 
 export const dynamic = 'force-dynamic';
 
@@ -50,14 +51,14 @@ export default async function InboxPage() {
   const convos = Array.from(byOther.values());
 
   // Look up the other participants' names.
-  const nameById = new Map<string, { username: string; display: string | null }>();
+  const nameById = new Map<string, { username: string; display: string | null; avatar: string | null }>();
   if (convos.length) {
     const { data: profs } = await supabase
       .from('profiles')
-      .select('id, username, display_name')
+      .select('id, username, display_name, avatar_url')
       .in('id', convos.map((c) => c.otherId));
     (profs ?? []).forEach((p: any) =>
-      nameById.set(p.id, { username: p.username, display: p.display_name })
+      nameById.set(p.id, { username: p.username, display: p.display_name, avatar: p.avatar_url })
     );
   }
 
@@ -81,6 +82,7 @@ export default async function InboxPage() {
                   href={`/messages/${who?.username ?? ''}`}
                   className="flex items-center gap-3 p-4 hover:bg-brand-soft"
                 >
+                  <Avatar src={who?.avatar ?? null} name={who?.display ?? who?.username ?? '?'} size={44} />
                   <div className="min-w-0 flex-1">
                     <p className="flex items-center gap-2 text-sm font-semibold">
                       {who?.display ?? `@${who?.username ?? 'user'}`}

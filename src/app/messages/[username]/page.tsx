@@ -2,6 +2,7 @@ import Link from 'next/link';
 import { notFound, redirect } from 'next/navigation';
 import { createClient } from '@/utils/supabase/server';
 import MessageComposer from './MessageComposer';
+import Avatar from '@/components/Avatar';
 
 export const dynamic = 'force-dynamic';
 
@@ -19,7 +20,7 @@ export default async function ThreadPage({
   // Who am I talking to?
   const { data: other } = await supabase
     .from('profiles')
-    .select('id, username, display_name')
+    .select('id, username, display_name, avatar_url')
     .eq('username', params.username)
     .maybeSingle();
   if (!other) notFound();
@@ -54,6 +55,7 @@ export default async function ThreadPage({
         <Link href="/messages" className="text-sm text-stone-400 hover:text-brand">
           ← Inbox
         </Link>
+        <Avatar src={other.avatar_url} name={other.display_name ?? other.username} size={28} />
         <Link
           href={`/u/${other.username}`}
           className="ml-1 font-semibold hover:text-brand hover:underline"

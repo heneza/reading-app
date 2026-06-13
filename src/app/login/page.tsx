@@ -39,6 +39,24 @@ export default function LoginPage({
           placeholder="Password (min 6 chars)"
           className="w-full rounded border border-slate-300 px-3 py-2"
         />
+        <div>
+          <div className="relative">
+            <span className="pointer-events-none absolute left-3 top-1/2 -translate-y-1/2 text-slate-400">
+              @
+            </span>
+            <input
+              name="username"
+              placeholder="username (to sign up)"
+              autoCapitalize="none"
+              autoCorrect="off"
+              className="w-full rounded border border-slate-300 py-2 pl-7 pr-3"
+            />
+          </div>
+          <p className="mt-1 text-xs text-slate-400">
+            3–20 characters · letters, numbers, periods, underscores. Only needed
+            to sign up.
+          </p>
+        </div>
         <div className="flex gap-3 pt-1">
           <button
             formAction={login}
@@ -48,7 +66,7 @@ export default function LoginPage({
           </button>
           <button
             formAction={signup}
-            className="flex-1 rounded border border-brand py-2 font-medium text-brand hover:bg-slate-100"
+            className="flex-1 rounded border border-brand py-2 font-medium text-brand hover:bg-brand-soft"
           >
             Sign up
           </button>

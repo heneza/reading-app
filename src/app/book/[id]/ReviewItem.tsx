@@ -3,6 +3,7 @@
 import { useState, useTransition } from 'react';
 import { useRouter } from 'next/navigation';
 import Link from 'next/link';
+import Avatar from '@/components/Avatar';
 import { submitReview, removeReview } from '@/app/actions/reviews';
 
 function PencilIcon() {
@@ -30,6 +31,7 @@ export default function ReviewItem({
   bookId,
   reviewId,
   username,
+  avatarUrl,
   body,
   spoiler,
   mine,
@@ -38,6 +40,7 @@ export default function ReviewItem({
   bookId: string;
   reviewId: string;
   username: string | null;
+  avatarUrl?: string | null;
   body: string;
   spoiler: boolean;
   mine: boolean;
@@ -92,13 +95,14 @@ export default function ReviewItem({
     <li className={`rounded border p-4 ${mine ? 'border-brand/40 bg-brand/5' : 'border-slate-200 bg-white'}`}>
       {/* header: author + (your) tag + spoiler tag + edit/delete icons */}
       <div className="mb-1 flex items-start justify-between gap-2">
-        <p className="text-sm font-medium">
+        <div className="flex items-center gap-2 text-sm font-medium">
+          <Avatar src={avatarUrl} name={username ?? 'reader'} size={28} />
           <Link href={`/u/${username}`} className="hover:underline">@{username ?? 'reader'}</Link>
           {mine && <span className="ml-2 rounded bg-brand px-2 py-0.5 text-xs text-white">you</span>}
           {(editing ? draftSpoiler : spoiler) && (
             <span className="ml-2 rounded bg-amber-100 px-2 py-0.5 text-xs text-amber-700">spoiler</span>
           )}
-        </p>
+        </div>
 
         {mine && !editing && (
           <div className="flex flex-shrink-0 items-center gap-2 text-slate-400">
