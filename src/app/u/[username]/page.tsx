@@ -9,7 +9,7 @@ import Avatar from '@/components/Avatar';
 
 // Turn @mentions in free text into links to those users' profiles.
 // Only usernames that actually exist (in `valid`) become links.
-function linkifyMentions(text: string): React.ReactNode[] {
+function linkifyMentions(text: string, valid: Set<string>): React.ReactNode[] {
   const parts: React.ReactNode[] = [];
   const re = /@([a-zA-Z0-9_]+(?:\.[a-zA-Z0-9_]+)*)/g;
   let last = 0;
@@ -18,11 +18,15 @@ function linkifyMentions(text: string): React.ReactNode[] {
   while ((m = re.exec(text)) !== null) {
     if (m.index > last) parts.push(text.slice(last, m.index));
     const uname = m[1];
-    parts.push(
-      <Link key={key++} href={`/u/${uname}`} className="font-medium text-brand hover:underline">
-        @{uname}
-      </Link>
-    );
+    if (valid.has(uname.toLowerCase())) {
+      parts.push(
+        <Link key={key++} href={`/u/${uname}`} className="font-medium text-brand hover:underline">
+          @{uname}
+        </Link>
+      );
+    } else {
+      parts.push(m[0]);
+    }
     last = m.index + m[0].length;
   }
   if (last < text.length) parts.push(text.slice(last));
@@ -71,6 +75,23 @@ export default async function ProfilePage({
     .select('genre')
     .eq('user_id', profile.id);
   const favGenres = (genreRows ?? []).map((r: any) => r.genre);
+
+  // Resolve @mentions in the bio to real users (only those become links).
+  const mentioned = Array.from(
+    new Set(
+      (profile.bio?.match(/@([a-zA-Z0-9_]+(?:\.[a-zA-Z0-9_]+)*)/g) ?? []).map(
+        (t: string) => t.slice(1)
+      )
+    )
+  );
+  let validMentions = new Set<string>();
+  if (mentioned.length) {
+    const { data: mp } = await supabase
+      .from('profiles')
+      .select('username')
+      .in('username', mentioned);
+    validMentions = new Set((mp ?? []).map((r: any) => String(r.username).toLowerCase()));
+  }
 
 
   // Favourite books (Top 4, like Letterboxd).
@@ -170,7 +191,7 @@ export default async function ProfilePage({
 
           {profile.bio && (
             <p className="mt-2 whitespace-pre-wrap text-slate-700">
-              {linkifyMentions(profile.bio)}
+              {linkifyMentions(profile.bio, validMentions)}
             </p>
           )}
 
@@ -228,7 +249,7 @@ export default async function ProfilePage({
         {/* Edit (own) or Follow/Unfollow (others) */}
         {isOwnProfile ? (
           <Link
-            href="/settings"
+            href="/settings/profile"
             className="whitespace-nowrap rounded-full border border-slate-300 px-4 py-1.5 text-sm font-medium text-slate-700 hover:bg-slate-100"
           >
             Edit profile
