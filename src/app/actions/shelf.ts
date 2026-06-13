@@ -3,6 +3,7 @@
 import { revalidatePath } from 'next/cache';
 import { redirect } from 'next/navigation';
 import { createClient } from '@/utils/supabase/server';
+import { classifyBook } from '@/app/actions/genres';
 
 // Adds (or updates) a book on the current user's shelf with a status.
 export async function addToShelf(formData: FormData) {
@@ -39,6 +40,13 @@ export async function addToShelf(formData: FormData) {
     { user_id: user.id, book_id: book.id, status },
     { onConflict: 'user_id,book_id' }
   );
+
+  // 3. Auto-classify the book into genres (best effort — never blocks the add).
+  try {
+    await classifyBook(book.id, olKey);
+  } catch {
+    /* classification is non-critical */
+  }
 
   revalidatePath('/');
   redirect('/');

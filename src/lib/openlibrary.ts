@@ -63,3 +63,18 @@ export function coverUrl(coverId?: number | null, size: 'S' | 'M' | 'L' = 'M') {
     ? `https://covers.openlibrary.org/b/id/${coverId}-${size}.jpg`
     : null;
 }
+
+// Fetch the list of subject strings for a work (used to classify genres).
+// `workKey` looks like "/works/OL12345W".
+export async function fetchSubjects(workKey: string): Promise<string[]> {
+  const key = workKey.startsWith('/') ? workKey : `/${workKey}`;
+  try {
+    const res = await fetch(`https://openlibrary.org${key}.json`, { cache: 'no-store' });
+    if (!res.ok) return [];
+    const data = await res.json();
+    const subjects = data.subjects;
+    return Array.isArray(subjects) ? subjects.map((x: any) => String(x)) : [];
+  } catch {
+    return [];
+  }
+}

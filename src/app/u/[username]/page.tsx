@@ -4,6 +4,7 @@ import { notFound } from 'next/navigation';
 import { createClient } from '@/utils/supabase/server';
 import { coverUrl } from '@/lib/openlibrary';
 import { followUser, unfollowUser } from '@/app/actions/follows';
+import { genreName } from '@/lib/genres';
 
 const STATUS_LABEL: Record<string, string> = {
   want_to_read: 'Want to read',
@@ -40,6 +41,13 @@ export default async function ProfilePage({
     .eq('user_id', profile.id)
     .order('updated_at', { ascending: false });
   const list = entries ?? [];
+
+  // Favourite genres (shown as chips on the profile).
+  const { data: genreRows } = await supabase
+    .from('profile_genres')
+    .select('genre')
+    .eq('user_id', profile.id);
+  const favGenres = (genreRows ?? []).map((r: any) => r.genre);
 
   // Follow graph: who follows them, who they follow (used for counts + friends)
   const { data: followerRows } = await supabase
@@ -135,6 +143,19 @@ export default async function ProfilePage({
                 </a>
               )}
             </p>
+          )}
+
+          {favGenres.length > 0 && (
+            <div className="mt-3 flex flex-wrap gap-2">
+              {favGenres.map((slug: string) => (
+                <span
+                  key={slug}
+                  className="rounded-full bg-brand-soft px-3 py-1 text-xs font-medium text-brand"
+                >
+                  {genreName(slug)}
+                </span>
+              ))}
+            </div>
           )}
         </div>
 

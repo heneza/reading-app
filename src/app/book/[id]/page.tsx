@@ -12,6 +12,8 @@ import {
 import ReviewForm from './ReviewForm';
 import ReviewItem from './ReviewItem';
 import { removeFromShelf } from '@/app/actions/shelf';
+import { classifyBook } from '@/app/actions/genres';
+import { genreName } from '@/lib/genres';
 
 const RATING_OPTIONS = Array.from({ length: 10 }, (_, i) => (i + 1) * 0.5);
 
@@ -23,7 +25,7 @@ export default async function BookPage({ params }: { params: { id: string } }) {
   const { data: { user } } = await supabase.auth.getUser();
 
   const { data: book } = await supabase
-    .from('books').select('id, title, author, cover_id').eq('id', params.id).single();
+    .from('books').select('id, title, author, cover_id, ol_key').eq('id', params.id).single();
   if (!book) notFound();
 
   let myRating: number | null = null;
@@ -34,6 +36,23 @@ export default async function BookPage({ params }: { params: { id: string } }) {
       .eq('user_id', user.id).eq('book_id', book.id).maybeSingle();
     myRating = entry?.rating ?? null;
     onShelf = !!entry;
+  }
+
+  // Genres for this book — classify on first view if not done yet.
+  let bookGenres: string[] = [];
+  {
+    const { data: bg } = await supabase
+      .from('book_genres')
+      .select('genre')
+      .eq('book_id', book.id);
+    bookGenres = (bg ?? []).map((r: any) => r.genre);
+    if (bookGenres.length === 0 && user && book.ol_key) {
+      try {
+        bookGenres = await classifyBook(book.id, book.ol_key);
+      } catch {
+        /* non-critical */
+      }
+    }
   }
 
   const { data: reviews, error: reviewsError } = await supabase
@@ -81,7 +100,16 @@ export default async function BookPage({ params }: { params: { id: string } }) {
         </div>
         <div className="flex-1">
           <h1 className="text-2xl font-bold">{book.title}</h1>
-          <p className="mb-4 text-slate-500">{book.author}</p>
+          <p className="mb-2 text-slate-500">{book.author}</p>
+          {bookGenres.length > 0 && (
+            <div className="mb-4 flex flex-wrap gap-2">
+              {bookGenres.map((slug: string) => (
+                <span key={slug} className="rounded-full bg-brand-soft px-3 py-1 text-xs font-medium text-brand">
+                  {genreName(slug)}
+                </span>
+              ))}
+            </div>
+          )}
           {user ? (
             <form action={saveRating} className="flex items-center gap-2">
               <input type="hidden" name="bookId" value={book.id} />

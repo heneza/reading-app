@@ -1,6 +1,7 @@
 import { redirect } from 'next/navigation';
 import { createClient } from '@/utils/supabase/server';
 import { updateProfile } from '@/app/actions/profile';
+import GenrePicker from './GenrePicker';
 
 // Always render fresh (no caching) so data and login state are current.
 export const dynamic = 'force-dynamic';
@@ -17,6 +18,12 @@ export default async function SettingsPage() {
     .select('username, display_name, bio, website, twitter, instagram')
     .eq('id', user.id)
     .maybeSingle();
+
+  const { data: myGenres } = await supabase
+    .from('profile_genres')
+    .select('genre')
+    .eq('user_id', user.id);
+  const selectedGenres = (myGenres ?? []).map((r: any) => r.genre);
 
   const field = 'w-full rounded border border-slate-300 px-3 py-2';
 
@@ -75,6 +82,15 @@ export default async function SettingsPage() {
           Save profile
         </button>
       </form>
+
+      <section className="mt-10 border-t border-stone-200 pt-8">
+        <h2 className="mb-1 text-lg font-semibold">Favourite genres</h2>
+        <p className="mb-4 text-sm text-stone-500">
+          Pick the genres you love. They show on your profile and will shape
+          your feed.
+        </p>
+        <GenrePicker initial={selectedGenres} username={profile?.username ?? ''} />
+      </section>
     </div>
   );
 }
