@@ -1,14 +1,20 @@
-// Thin client for the free Open Library search API.
-// Docs: https://openlibrary.org/dev/docs/api/search
+// Thin client for the free Open Library APIs.
 
 export interface OLBook {
-  key: string;        // e.g. "/works/OL45883W"
+  key: string;
   title: string;
   author?: string;
   year?: number;
   coverId?: number;
 }
 
+export interface OLAuthor {
+  key: string;
+  name: string;
+  workCount?: number;
+}
+
+// Search books by title / author / keyword.
 export async function searchBooks(query: string): Promise<OLBook[]> {
   const q = query.trim();
   if (!q) return [];
@@ -29,6 +35,26 @@ export async function searchBooks(query: string): Promise<OLBook[]> {
     author: d.author_name?.[0],
     year: d.first_publish_year,
     coverId: d.cover_i,
+  }));
+}
+
+// Search authors by name.
+export async function searchAuthors(query: string): Promise<OLAuthor[]> {
+  const q = query.trim();
+  if (!q) return [];
+
+  const url =
+    'https://openlibrary.org/search/authors.json' +
+    `?q=${encodeURIComponent(q)}&limit=20`;
+
+  const res = await fetch(url, { cache: 'no-store' });
+  if (!res.ok) return [];
+
+  const data = await res.json();
+  return (data.docs ?? []).map((d: any): OLAuthor => ({
+    key: d.key,
+    name: d.name,
+    workCount: d.work_count,
   }));
 }
 

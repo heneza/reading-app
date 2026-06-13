@@ -224,7 +224,7 @@ export default async function BookPage({
                 )}
 
                 <p className="mb-1 pr-6 text-sm font-medium">
-                  @{rev.profiles?.username ?? 'reader'}
+                  <Link href={`/u/${rev.profiles?.username}`} className="hover:underline">@{rev.profiles?.username ?? 'reader'}</Link>
                   {mine && (
                     <span className="ml-2 rounded bg-brand px-2 py-0.5 text-xs text-white">
                       you
