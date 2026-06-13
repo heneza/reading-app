@@ -135,7 +135,7 @@ export default async function BookPage({
           <form action={saveReview} className="space-y-2">
             <input type="hidden" name="bookId" value={book.id} />
             {editingReview && <input type="hidden" name="reviewId" value={editingReview.id} />}
-            <textarea key={`${editingId ?? 'new'}-${reviewList.length}`} name="body" rows={4} defaultValue={editingReview?.body ?? ''} placeholder="What did you think?" className="w-full rounded border border-slate-300 p-3" />
+            <textarea name="body" rows={4} defaultValue={editingReview?.body ?? ''} placeholder="What did you think?" className="w-full rounded border border-slate-300 p-3" />
             <div className="flex items-center justify-between">
               <label className="flex items-center gap-2 text-sm text-slate-600">
                 <input type="checkbox" name="spoiler" defaultChecked={editingReview?.spoiler ?? false} />
@@ -248,7 +248,7 @@ export default async function BookPage({
                     <form action={addReviewComment} className="flex gap-2">
                       <input type="hidden" name="bookId" value={book.id} />
                       <input type="hidden" name="reviewId" value={rev.id} />
-                      <input key={`reply-${rev.id}-${revComments.length}`} name="body" placeholder="Write a reply…" className="flex-1 rounded border border-slate-300 px-3 py-1 text-sm" />
+                      <input name="body" placeholder="Write a reply…" className="flex-1 rounded border border-slate-300 px-3 py-1 text-sm" />
                       <button className="rounded bg-slate-700 px-3 py-1 text-sm text-white hover:opacity-90">Reply</button>
                     </form>
                   )}
