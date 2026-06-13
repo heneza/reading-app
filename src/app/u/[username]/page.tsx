@@ -199,19 +199,27 @@ export default async function ProfilePage({
             Edit profile
           </Link>
         ) : user ? (
-          <form action={isFollowing ? unfollowUser : followUser}>
-            <input type="hidden" name="followeeId" value={profile.id} />
-            <input type="hidden" name="username" value={profile.username} />
-            <button
-              className={
-                isFollowing
-                  ? 'rounded-full border border-slate-300 px-4 py-1.5 text-sm font-medium text-slate-700 hover:bg-slate-100'
-                  : 'rounded-full bg-brand px-4 py-1.5 text-sm font-medium text-white hover:opacity-90'
-              }
+          <div className="flex flex-shrink-0 items-center gap-2">
+            <Link
+              href={`/messages/${profile.username}`}
+              className="whitespace-nowrap rounded-full border border-slate-300 px-4 py-1.5 text-sm font-medium text-slate-700 hover:bg-slate-100"
             >
-              {isFollowing ? 'Following' : 'Follow'}
-            </button>
-          </form>
+              Message
+            </Link>
+            <form action={isFollowing ? unfollowUser : followUser}>
+              <input type="hidden" name="followeeId" value={profile.id} />
+              <input type="hidden" name="username" value={profile.username} />
+              <button
+                className={
+                  isFollowing
+                    ? 'rounded-full border border-slate-300 px-4 py-1.5 text-sm font-medium text-slate-700 hover:bg-slate-100'
+                    : 'rounded-full bg-brand px-4 py-1.5 text-sm font-medium text-white hover:opacity-90'
+                }
+              >
+                {isFollowing ? 'Following' : 'Follow'}
+              </button>
+            </form>
+          </div>
         ) : null}
       </div>
 

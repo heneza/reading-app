@@ -18,6 +18,16 @@ export default async function Nav() {
     username = p?.username ?? null;
   }
 
+  let unread = 0;
+  if (user) {
+    const { count } = await supabase
+      .from('messages')
+      .select('id', { count: 'exact', head: true })
+      .eq('recipient_id', user.id)
+      .is('read_at', null);
+    unread = count ?? 0;
+  }
+
   const pill =
     'rounded-full px-3 py-1.5 text-slate-600 transition hover:bg-brand-soft hover:text-brand';
 
@@ -43,6 +53,14 @@ export default async function Nav() {
           </Link>
           {user ? (
             <>
+              <Link href="/messages" className={`relative ${pill}`}>
+                Messages
+                {unread > 0 && (
+                  <span className="absolute -right-0.5 -top-0.5 flex h-4 min-w-[1rem] items-center justify-center rounded-full bg-brand px-1 text-[10px] font-semibold text-white">
+                    {unread}
+                  </span>
+                )}
+              </Link>
               {username && (
                 <Link href={`/u/${username}`} className={pill}>
                   Profile
