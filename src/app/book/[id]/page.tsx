@@ -5,12 +5,12 @@ import { createClient } from '@/utils/supabase/server';
 import { coverUrl } from '@/lib/openlibrary';
 import {
   saveRating,
-  saveReview,
   deleteReview,
   reactToReview,
   addReviewComment,
   deleteReviewComment,
 } from '@/app/actions/reviews';
+import ReviewForm from './ReviewForm';
 import { removeFromShelf } from '@/app/actions/shelf';
 
 const RATING_OPTIONS = Array.from({ length: 10 }, (_, i) => (i + 1) * 0.5);
@@ -138,23 +138,13 @@ export default async function BookPage({
       {user && (
         <section className="mt-8">
           <h2 className="mb-2 text-lg font-semibold">{editingReview ? 'Edit your review' : 'Write a review'}</h2>
-          <form action={saveReview} className="space-y-2">
-            <input type="hidden" name="bookId" value={book.id} />
-            {editingReview && <input type="hidden" name="reviewId" value={editingReview.id} />}
-            <textarea name="body" rows={4} defaultValue={editingReview?.body ?? ''} placeholder="What did you think?" className="w-full rounded border border-slate-300 p-3" />
-            <div className="flex items-center justify-between">
-              <label className="flex items-center gap-2 text-sm text-slate-600">
-                <input type="checkbox" name="spoiler" defaultChecked={editingReview?.spoiler ?? false} />
-                Contains spoilers
-              </label>
-              <div className="flex items-center gap-3">
-                {editingReview && <Link href={`/book/${book.id}`} className="text-sm text-slate-500 hover:underline">Cancel</Link>}
-                <button className="rounded bg-brand px-4 py-2 text-sm font-medium text-white hover:opacity-90">
-                  {editingReview ? 'Update review' : 'Post review'}
-                </button>
-              </div>
-            </div>
-          </form>
+          <ReviewForm
+            bookId={book.id}
+            editingReviewId={editingReview?.id ?? null}
+            defaultBody={editingReview?.body ?? ''}
+            defaultSpoiler={editingReview?.spoiler ?? false}
+            isEditing={!!editingReview}
+          />
         </section>
       )}
 

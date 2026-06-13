@@ -122,3 +122,36 @@ export async function deleteReviewComment(formData: FormData) {
   await supabase.from('review_comments').delete().eq('id', commentId).eq('user_id', user.id);
   redirect(`/book/${bookId}`);
 }
+
+// Client-friendly: returns an error string instead of redirecting, so a
+// client component can display it. Used by the ReviewForm component.
+export async function submitReview(input: {
+  bookId: string;
+  reviewId?: string | null;
+  body: string;
+  spoiler: boolean;
+}): Promise<{ error: string | null }> {
+  const supabase = createClient();
+  const { data: { user } } = await supabase.auth.getUser();
+  if (!user) return { error: 'You are not signed in on the server (session not found).' };
+
+  const body = input.body.trim();
+  if (!body) return { error: 'Please write something first.' };
+
+  if (input.reviewId) {
+    const { error } = await supabase
+      .from('reviews')
+      .update({ body, spoiler: input.spoiler })
+      .eq('id', input.reviewId)
+      .eq('user_id', user.id);
+    if (error) return { error: error.message };
+  } else {
+    const { error } = await supabase
+      .from('reviews')
+      .insert({ user_id: user.id, book_id: input.bookId, body, spoiler: input.spoiler });
+    if (error) return { error: error.message };
+  }
+
+  revalidatePath(`/book/${input.bookId}`);
+  return { error: null };
+}
