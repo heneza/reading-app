@@ -31,3 +31,21 @@ body {
     @apply border-brand outline-none;
   }
 }
+
+/* Rich-text editor placeholder */
+[contenteditable][data-placeholder]:empty::before {
+  content: attr(data-placeholder);
+  color: #b8b3ad;
+  pointer-events: none;
+}
+
+/* Rendered post bodies */
+.post-body ul { list-style: disc; padding-left: 1.5rem; }
+.post-body ol { list-style: decimal; padding-left: 1.5rem; }
+.post-body blockquote {
+  border-left: 3px solid #e7e5e4;
+  padding-left: 0.75rem;
+  color: #57534e;
+  font-style: italic;
+}
+.post-body { word-break: break-word; }

@@ -3,6 +3,7 @@ import Image from 'next/image';
 import { createClient } from '@/utils/supabase/server';
 import { coverUrl } from '@/lib/openlibrary';
 import Avatar from '@/components/Avatar';
+import PostCard from '@/components/PostCard';
 import { timeAgo } from '@/lib/time';
 
 export const dynamic = 'force-dynamic';
@@ -228,6 +229,27 @@ export default async function ExplorePage() {
     }
   }
 
+  // Short-form posts feed (articles live on /articles)
+  const { data: shortPostsData } = await supabase
+    .from('posts')
+    .select('*')
+    .eq('is_article', false)
+    .eq('status', 'published')
+    .order('created_at', { ascending: false })
+    .limit(15);
+  const shortPosts = shortPostsData ?? [];
+  const postAuthors = new Map<string, any>();
+  {
+    const ids = Array.from(new Set(shortPosts.map((p: any) => p.user_id)));
+    if (ids.length) {
+      const { data: au } = await supabase
+        .from('profiles')
+        .select('id, username, display_name, avatar_url')
+        .in('id', ids);
+      (au ?? []).forEach((a: any) => postAuthors.set(a.id, a));
+    }
+  }
+
   return (
     <div className="space-y-10">
       <header className="flex items-end justify-between">
@@ -238,6 +260,24 @@ export default async function ExplorePage() {
           </Link>
         )}
       </header>
+
+      {/* Latest short-form posts */}
+      <section>
+        <h2 className="mb-3 text-lg font-semibold">Latest posts</h2>
+        {shortPosts.length === 0 ? (
+          <p className="rounded-lg border border-stone-200 bg-white p-4 text-sm text-stone-500">
+            No posts yet — write one from your profile.
+          </p>
+        ) : (
+          <ul className="space-y-3">
+            {shortPosts.map((p: any) => (
+              <li key={p.id}>
+                <PostCard post={p} author={postAuthors.get(p.user_id)} />
+              </li>
+            ))}
+          </ul>
+        )}
+      </section>
 
       {/* Activity from people you follow */}
       <section>

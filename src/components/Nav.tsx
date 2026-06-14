@@ -53,6 +53,12 @@ export default async function Nav() {
         </form>
 
         <div className="ml-auto flex items-center gap-2 text-sm">
+          <Link
+            href="/articles"
+            className="rounded-full px-3 py-1.5 text-slate-600 transition hover:bg-brand-soft hover:text-brand"
+          >
+            Articles
+          </Link>
           {user ? (
             /* Profile menu (reveals on hover) */
             <div className="group relative">

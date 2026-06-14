@@ -42,6 +42,7 @@ export default function SearchForm({
         <option value="books">Books</option>
         <option value="authors">Authors</option>
         <option value="users">Users</option>
+        <option value="posts">Posts</option>
       </select>
       <input
         name="q"

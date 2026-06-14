@@ -4,8 +4,9 @@ import { searchBooks, searchAuthors, coverUrl } from '@/lib/openlibrary';
 import { addToShelf } from '@/app/actions/shelf';
 import { createClient } from '@/utils/supabase/server';
 import SearchForm from './SearchForm';
+import PostCard from '@/components/PostCard';
 
-type Filter = 'books' | 'authors' | 'users';
+type Filter = 'books' | 'authors' | 'users' | 'posts';
 
 // A centered, light-gray message used for empty / prompt states.
 function Empty({ children }: { children: React.ReactNode }) {
@@ -23,7 +24,7 @@ export default async function SearchPage({
   searchParams: { q?: string; filter?: string };
 }) {
   const q = (searchParams.q ?? '').trim();
-  const filter: Filter = (['books', 'authors', 'users'].includes(
+  const filter: Filter = (['books', 'authors', 'users', 'posts'].includes(
     searchParams.filter ?? ''
   )
     ? searchParams.filter
@@ -37,19 +38,39 @@ export default async function SearchPage({
   let books: Awaited<ReturnType<typeof searchBooks>> = [];
   let authors: Awaited<ReturnType<typeof searchAuthors>> = [];
   let users: { username: string; display_name: string | null }[] = [];
+  let posts: any[] = [];
+  const postAuthors = new Map<string, any>();
 
   if (q) {
     if (filter === 'books') {
       books = await searchBooks(q);
     } else if (filter === 'authors') {
       authors = await searchAuthors(q);
-    } else {
+    } else if (filter === 'users') {
       const { data } = await supabase
         .from('profiles')
         .select('username, display_name')
         .or(`username.ilike.%${q}%,display_name.ilike.%${q}%`)
         .limit(20);
       users = data ?? [];
+    } else {
+      const tag = q.toLowerCase().replace(/^#/, '');
+      const { data } = await supabase
+        .from('posts')
+        .select('*')
+        .eq('status', 'published')
+        .contains('tags', [tag])
+        .order('created_at', { ascending: false })
+        .limit(30);
+      posts = data ?? [];
+      const ids = Array.from(new Set(posts.map((x: any) => x.user_id)));
+      if (ids.length) {
+        const { data: au } = await supabase
+          .from('profiles')
+          .select('id, username, display_name, avatar_url')
+          .in('id', ids);
+        (au ?? []).forEach((a: any) => postAuthors.set(a.id, a));
+      }
     }
   }
 
@@ -60,7 +81,7 @@ export default async function SearchPage({
       <SearchForm q={q} filter={filter} />
 
       {/* No search typed yet */}
-      {!q && <Empty>Search for books, authors, or users.</Empty>}
+      {!q && <Empty>Search for books, authors, users, or post #tags.</Empty>}
 
       {/* --- BOOKS --- */}
       {q && filter === 'books' && (
@@ -145,6 +166,21 @@ export default async function SearchPage({
                     {a.workCount} works
                   </span>
                 ) : null}
+              </li>
+            ))}
+          </ul>
+        )
+      )}
+
+      {/* --- POSTS (by tag) --- */}
+      {q && filter === 'posts' && (
+        posts.length === 0 ? (
+          <Empty>No posts tagged #{q.toLowerCase().replace(/^#/, '')}.</Empty>
+        ) : (
+          <ul className="space-y-3">
+            {posts.map((p: any) => (
+              <li key={p.id}>
+                <PostCard post={p} author={postAuthors.get(p.user_id)} />
               </li>
             ))}
           </ul>

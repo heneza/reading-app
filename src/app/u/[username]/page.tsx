@@ -6,6 +6,8 @@ import { coverUrl } from '@/lib/openlibrary';
 import { followUser, unfollowUser } from '@/app/actions/follows';
 import { genreName } from '@/lib/genres';
 import Avatar from '@/components/Avatar';
+import PostComposer from '@/components/PostComposer';
+import PostCard from '@/components/PostCard';
 
 // Turn @mentions in free text into links to those users' profiles.
 // Only usernames that actually exist (in `valid`) become links.
@@ -46,8 +48,10 @@ export const dynamic = 'force-dynamic';
 
 export default async function ProfilePage({
   params,
+  searchParams,
 }: {
   params: { username: string };
+  searchParams: { tag?: string };
 }) {
   const supabase = createClient();
   const {
@@ -124,6 +128,18 @@ export default async function ProfilePage({
     .filter((r: any) => r.likes > 0)
     .sort((a: any, b: any) => b.likes - a.likes)
     .slice(0, 4);
+
+  // Posts on this profile (RLS hides others' pending articles).
+  const tagFilter = searchParams?.tag ?? null;
+  let postsQ = supabase
+    .from('posts')
+    .select('*')
+    .eq('user_id', profile.id)
+    .order('created_at', { ascending: false })
+    .limit(30);
+  if (tagFilter) postsQ = postsQ.contains('tags', [tagFilter]);
+  const { data: postsData } = await postsQ;
+  const posts = postsData ?? [];
 
   // Follow graph: who follows them, who they follow (used for counts + friends)
   const { data: followerRows } = await supabase
@@ -278,6 +294,36 @@ export default async function ProfilePage({
           </div>
         ) : null}
       </div>
+
+      {/* --- Posts --- */}
+      <section className="mt-8">
+        <div className="mb-3 flex items-center justify-between">
+          <h2 className="text-sm font-semibold uppercase tracking-wide text-slate-400">Posts</h2>
+          {tagFilter && (
+            <Link href={`/u/${profile.username}`} className="text-xs text-brand hover:underline">
+              #{tagFilter} ✕
+            </Link>
+          )}
+        </div>
+        {isOwnProfile && !tagFilter && (
+          <div className="mb-4">
+            <PostComposer />
+          </div>
+        )}
+        {posts.length === 0 ? (
+          <p className="text-sm text-stone-500">
+            {tagFilter ? `No posts tagged #${tagFilter}.` : 'No posts yet.'}
+          </p>
+        ) : (
+          <ul className="space-y-3">
+            {posts.map((p: any) => (
+              <li key={p.id}>
+                <PostCard post={p} canDelete={isOwnProfile} showAuthor={false} />
+              </li>
+            ))}
+          </ul>
+        )}
+      </section>
 
       {/* --- Favourites (Top 4) --- */}
       {favs.length > 0 && (
