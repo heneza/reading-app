@@ -112,3 +112,26 @@ export async function setAvatar(url: string): Promise<{ error: string | null }> 
   revalidatePath('/', 'layout');
   return { error: null };
 }
+
+// Who can see your likes / comments history on your profile.
+export async function setVisibility(formData: FormData) {
+  const supabase = createClient();
+  const {
+    data: { user },
+  } = await supabase.auth.getUser();
+  if (!user) return;
+
+  const valid = ['public', 'friends', 'private'];
+  const likes = String(formData.get('likes_visibility') ?? 'public');
+  const comments = String(formData.get('comments_visibility') ?? 'public');
+
+  await supabase
+    .from('profiles')
+    .update({
+      likes_visibility: valid.includes(likes) ? likes : 'public',
+      comments_visibility: valid.includes(comments) ? comments : 'public',
+    })
+    .eq('id', user.id);
+
+  revalidatePath('/settings');
+}

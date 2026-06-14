@@ -1,21 +1,65 @@
 import Link from 'next/link';
 import Avatar from '@/components/Avatar';
 import { timeAgo } from '@/lib/time';
-import { deletePost } from '@/app/actions/posts';
+import { createClient } from '@/utils/supabase/server';
+import {
+  deletePost,
+  reactToPost,
+  repost,
+  addPostComment,
+  deletePostComment,
+} from '@/app/actions/posts';
 
-export default function PostCard({
+export default async function PostCard({
   post,
   author,
   canDelete = false,
   showAuthor = true,
+  repostedBy = null,
 }: {
   post: any;
   author?: any;
   canDelete?: boolean;
   showAuthor?: boolean;
+  repostedBy?: string | null;
 }) {
+  const supabase = createClient();
+  const {
+    data: { user },
+  } = await supabase.auth.getUser();
+
+  const [{ data: rx }, { data: cm }, { data: rp }] = await Promise.all([
+    supabase.from('post_reactions').select('user_id, type').eq('post_id', post.id),
+    supabase.from('post_comments').select('id, user_id, body, created_at').eq('post_id', post.id).order('created_at', { ascending: true }),
+    supabase.from('post_reposts').select('user_id').eq('post_id', post.id),
+  ]);
+  const reactions = rx ?? [];
+  const comments = cm ?? [];
+  const reposters = rp ?? [];
+  const likes = reactions.filter((r: any) => r.type === 'like').length;
+  const dislikes = reactions.filter((r: any) => r.type === 'dislike').length;
+  const myReaction = user ? reactions.find((r: any) => r.user_id === user.id)?.type ?? null : null;
+  const iReposted = user ? reposters.some((r: any) => r.user_id === user.id) : false;
+
+  const nameById = new Map<string, any>();
+  const cids = Array.from(new Set(comments.map((c: any) => c.user_id)));
+  if (cids.length) {
+    const { data: profs } = await supabase
+      .from('profiles')
+      .select('id, username, display_name, avatar_url')
+      .in('id', cids);
+    (profs ?? []).forEach((p: any) => nameById.set(p.id, p));
+  }
+
+  const pill = (active: boolean) =>
+    `rounded-full border px-3 py-1 ${active ? 'border-brand bg-brand text-white' : 'border-slate-300 text-slate-600 hover:bg-slate-100'}`;
+
   return (
     <article className="rounded-lg border border-stone-200 bg-white p-4">
+      {repostedBy && (
+        <p className="mb-1 text-xs text-stone-400">↻ reposted by @{repostedBy}</p>
+      )}
+
       <div className="mb-2 flex items-center justify-between gap-2">
         <div className="flex min-w-0 items-center gap-2">
           {showAuthor && author && (
@@ -33,16 +77,11 @@ export default function PostCard({
           {post.status === 'pending' && (
             <span className="rounded-full bg-amber-100 px-2 py-0.5 text-[11px] font-medium text-amber-700">Pending review</span>
           )}
-          {post.status === 'rejected' && (
-            <span className="rounded-full bg-red-100 px-2 py-0.5 text-[11px] font-medium text-red-700">Needs shortening</span>
-          )}
         </div>
         {canDelete && (
           <form action={deletePost}>
             <input type="hidden" name="id" value={post.id} />
-            <button title="Delete post" className="flex-shrink-0 text-stone-300 hover:text-red-600">
-              ×
-            </button>
+            <button title="Delete post" className="flex-shrink-0 text-stone-300 hover:text-red-600">×</button>
           </form>
         )}
       </div>
@@ -58,6 +97,59 @@ export default function PostCard({
           ))}
         </div>
       )}
+
+      {/* interaction bar */}
+      <div className="mt-3 flex items-center gap-2 text-sm">
+        <form action={reactToPost}>
+          <input type="hidden" name="postId" value={post.id} />
+          <input type="hidden" name="type" value="like" />
+          <button className={pill(myReaction === 'like')}>Like {likes}</button>
+        </form>
+        <form action={reactToPost}>
+          <input type="hidden" name="postId" value={post.id} />
+          <input type="hidden" name="type" value="dislike" />
+          <button className={pill(myReaction === 'dislike')}>Dislike {dislikes}</button>
+        </form>
+        <form action={repost} className="ml-auto">
+          <input type="hidden" name="postId" value={post.id} />
+          <button className={pill(iReposted)} title="Repost to your profile">↻ {reposters.length}</button>
+        </form>
+      </div>
+
+      {/* comments */}
+      <details className="mt-2">
+        <summary className="cursor-pointer text-xs text-stone-500 hover:text-brand">
+          {comments.length} comment{comments.length === 1 ? '' : 's'}
+        </summary>
+        <div className="mt-2 space-y-2 border-t border-stone-100 pt-2">
+          {comments.map((c: any) => {
+            const a = nameById.get(c.user_id);
+            const mineC = c.user_id === user?.id;
+            return (
+              <div key={c.id} className="flex items-start justify-between gap-2 text-sm">
+                <p className="text-stone-700">
+                  <Link href={`/u/${a?.username}`} className="font-medium hover:text-brand hover:underline">@{a?.username}</Link>{' '}
+                  {c.body}{' '}
+                  <span className="text-xs text-stone-400">· {timeAgo(c.created_at)}</span>
+                </p>
+                {mineC && (
+                  <form action={deletePostComment}>
+                    <input type="hidden" name="commentId" value={c.id} />
+                    <button className="text-stone-300 hover:text-red-600">×</button>
+                  </form>
+                )}
+              </div>
+            );
+          })}
+          {user && (
+            <form action={addPostComment} className="flex gap-2">
+              <input type="hidden" name="postId" value={post.id} />
+              <input name="body" placeholder="Write a comment…" className="flex-1 rounded border border-stone-300 px-3 py-1 text-sm" />
+              <button className="rounded bg-slate-700 px-3 py-1 text-sm text-white hover:opacity-90">Reply</button>
+            </form>
+          )}
+        </div>
+      </details>
     </article>
   );
 }

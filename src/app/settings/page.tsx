@@ -2,6 +2,7 @@ import Link from 'next/link';
 import { redirect } from 'next/navigation';
 import { createClient } from '@/utils/supabase/server';
 import { signout } from '@/app/login/actions';
+import { setVisibility } from '@/app/actions/profile';
 import { timeAgo } from '@/lib/time';
 import ReadReceiptsToggle from './ReadReceiptsToggle';
 
@@ -23,7 +24,7 @@ export default async function SettingsPage() {
 
   const { data: profile } = await supabase
     .from('profiles')
-    .select('username, display_name, read_receipts')
+    .select('username, display_name, read_receipts, likes_visibility, comments_visibility')
     .eq('id', user.id)
     .maybeSingle();
 
@@ -174,6 +175,26 @@ export default async function SettingsPage() {
             recipient.
           </p>
           <ReadReceiptsToggle initial={profile?.read_receipts !== false} />
+
+          <form action={setVisibility} className="space-y-2 border-t border-stone-100 pt-3">
+            <label className="flex items-center justify-between gap-3">
+              <span>Who can see your likes</span>
+              <select name="likes_visibility" defaultValue={profile?.likes_visibility ?? 'public'}>
+                <option value="public">Everyone</option>
+                <option value="friends">Friends only</option>
+                <option value="private">Only me</option>
+              </select>
+            </label>
+            <label className="flex items-center justify-between gap-3">
+              <span>Who can see your comments</span>
+              <select name="comments_visibility" defaultValue={profile?.comments_visibility ?? 'public'}>
+                <option value="public">Everyone</option>
+                <option value="friends">Friends only</option>
+                <option value="private">Only me</option>
+              </select>
+            </label>
+            <button className="rounded bg-brand px-4 py-1.5 text-sm font-medium text-white transition hover:bg-brand-dark">Save visibility</button>
+          </form>
           <form action={signout}>
             <button className="rounded border border-stone-300 px-4 py-2 text-sm font-medium text-stone-700 hover:bg-stone-100">
               Sign out

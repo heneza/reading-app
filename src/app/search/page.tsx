@@ -55,14 +55,13 @@ export default async function SearchPage({
       users = data ?? [];
     } else {
       const tag = q.toLowerCase().replace(/^#/, '');
-      const { data } = await supabase
-        .from('posts')
-        .select('*')
-        .eq('status', 'published')
-        .contains('tags', [tag])
-        .order('created_at', { ascending: false })
-        .limit(30);
-      posts = data ?? [];
+      const [{ data: byTag }, { data: byText }] = await Promise.all([
+        supabase.from('posts').select('*').eq('status', 'published').contains('tags', [tag]).limit(30),
+        supabase.from('posts').select('*').eq('status', 'published').ilike('body_text', `%${q}%`).limit(30),
+      ]);
+      const seen = new Map<string, any>();
+      [...(byTag ?? []), ...(byText ?? [])].forEach((x: any) => seen.set(x.id, x));
+      posts = Array.from(seen.values()).sort((a: any, b: any) => (a.created_at < b.created_at ? 1 : -1));
       const ids = Array.from(new Set(posts.map((x: any) => x.user_id)));
       if (ids.length) {
         const { data: au } = await supabase

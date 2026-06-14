@@ -53,6 +53,7 @@ export async function createPost(input: {
   const { error } = await supabase.from('posts').insert({
     user_id: user.id,
     body_html: clean,
+    body_text: text,
     text_len: len,
     is_article: isArticle,
     status,
@@ -74,4 +75,75 @@ export async function deletePost(formData: FormData) {
   const id = String(formData.get('id'));
   await supabase.from('posts').delete().eq('id', id).eq('user_id', user.id);
   await revalidateForUser(supabase, user.id);
+}
+
+// --- Interactions -----------------------------------------------------
+export async function reactToPost(formData: FormData) {
+  const supabase = createClient();
+  const { data: { user } } = await supabase.auth.getUser();
+  if (!user) return;
+  const postId = String(formData.get('postId'));
+  const type = String(formData.get('type'));
+
+  const { data: existing } = await supabase
+    .from('post_reactions')
+    .select('type')
+    .eq('post_id', postId)
+    .eq('user_id', user.id)
+    .maybeSingle();
+
+  if (existing && existing.type === type) {
+    await supabase.from('post_reactions').delete().eq('post_id', postId).eq('user_id', user.id);
+  } else {
+    await supabase.from('post_reactions')
+      .upsert({ post_id: postId, user_id: user.id, type }, { onConflict: 'post_id,user_id' });
+  }
+  revalidatePath('/');
+  revalidatePath('/articles');
+}
+
+export async function repost(formData: FormData) {
+  const supabase = createClient();
+  const { data: { user } } = await supabase.auth.getUser();
+  if (!user) return;
+  const postId = String(formData.get('postId'));
+
+  const { data: existing } = await supabase
+    .from('post_reposts')
+    .select('post_id')
+    .eq('post_id', postId)
+    .eq('user_id', user.id)
+    .maybeSingle();
+
+  if (existing) {
+    await supabase.from('post_reposts').delete().eq('post_id', postId).eq('user_id', user.id);
+  } else {
+    await supabase.from('post_reposts').insert({ post_id: postId, user_id: user.id });
+  }
+  revalidatePath('/');
+  const { data: p } = await supabase.from('profiles').select('username').eq('id', user.id).maybeSingle();
+  if (p?.username) revalidatePath(`/u/${p.username}`);
+}
+
+export async function addPostComment(formData: FormData) {
+  const supabase = createClient();
+  const { data: { user } } = await supabase.auth.getUser();
+  if (!user) return;
+  const postId = String(formData.get('postId'));
+  const body = String(formData.get('body') ?? '').trim();
+  if (body) {
+    await supabase.from('post_comments').insert({ post_id: postId, user_id: user.id, body });
+  }
+  revalidatePath('/');
+  revalidatePath('/articles');
+}
+
+export async function deletePostComment(formData: FormData) {
+  const supabase = createClient();
+  const { data: { user } } = await supabase.auth.getUser();
+  if (!user) return;
+  const commentId = String(formData.get('commentId'));
+  await supabase.from('post_comments').delete().eq('id', commentId).eq('user_id', user.id);
+  revalidatePath('/');
+  revalidatePath('/articles');
 }

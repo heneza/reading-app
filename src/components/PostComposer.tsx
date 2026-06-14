@@ -44,6 +44,24 @@ export default function PostComposer() {
     sync();
   }
 
+  // Quote: wrap the selection in “ ”, italic serif, with an attribution line.
+  function insertQuote() {
+    focusEditor();
+    const sel = window.getSelection();
+    let quoted = '';
+    if (sel && sel.rangeCount && !sel.isCollapsed) {
+      const holder = document.createElement('div');
+      holder.appendChild(sel.getRangeAt(0).cloneContents());
+      quoted = holder.innerHTML;
+    }
+    const html =
+      `<blockquote style="font-family: 'Times New Roman', serif; font-style: italic; font-size: 1.15em">` +
+      `&ldquo;${quoted || 'quote'}&rdquo;</blockquote>` +
+      `<p>&mdash; </p><p><br></p>`;
+    document.execCommand('insertHTML', false, html);
+    sync();
+  }
+
   function addTag(raw: string) {
     const clean = raw.trim().toLowerCase().replace(/^#/, '');
     if (!clean) return;
@@ -136,9 +154,9 @@ export default function PostComposer() {
         <button
           type="button"
           onMouseDown={hold}
-          onClick={() => wrap("font-family: 'Times New Roman', serif; font-size: 1.25em")}
+          onClick={insertQuote}
           className={btn}
-          title="Quote style (Times New Roman)"
+          title="Quote: adds quotation marks, italic, and an attribution line"
           style={{ fontFamily: "'Times New Roman', serif" }}
         >
           Quote
