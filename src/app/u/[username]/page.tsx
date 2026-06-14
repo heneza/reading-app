@@ -127,6 +127,23 @@ export default async function ProfilePage({
     .gte('created_at', yearStart);
   const hoursThisYear = (sessionRows ?? []).reduce((sum: number, r: any) => sum + Number(r.hours), 0);
   const booksThisYear = thisYearCount ?? 0;
+
+  // Lists for this profile (own + liked) for the sidebar card.
+  const { data: ownListRows } = await supabase
+    .from('lists')
+    .select('id, title')
+    .eq('owner_id', profile.id)
+    .order('created_at', { ascending: false })
+    .limit(10);
+  const { data: likedListRows } = await supabase
+    .from('list_likes')
+    .select('lists ( id, title )')
+    .eq('user_id', profile.id)
+    .limit(10);
+  const profileLists: { id: string; title: string; mine: boolean }[] = [
+    ...(ownListRows ?? []).map((l: any) => ({ id: l.id, title: l.title, mine: true })),
+    ...(likedListRows ?? []).map((r: any) => r.lists).filter(Boolean).map((l: any) => ({ id: l.id, title: l.title, mine: false })),
+  ];
   const pctBooks = booksGoal > 0 ? Math.min(100, (booksThisYear / booksGoal) * 100) : 0;
   const pctHours = hoursGoal > 0 ? Math.min(100, (hoursThisYear / hoursGoal) * 100) : 0;
 
@@ -438,6 +455,31 @@ export default async function ProfilePage({
               </ul>
             )}
           </div>
+
+          {/* Lists (own + liked) */}
+          {(profileLists.length > 0 || isOwnProfile) && (
+            <div className="rounded-lg border border-stone-200 bg-white p-3">
+              <div className="mb-2 flex items-center justify-between">
+                <h3 className="text-sm font-semibold text-stone-700">Lists</h3>
+                <Link href="/lists" className="text-xs text-brand hover:underline">Browse →</Link>
+              </div>
+              {profileLists.length === 0 ? (
+                <p className="text-xs text-stone-400">No lists yet.</p>
+              ) : (
+                <ul className="space-y-1.5 text-sm">
+                  {profileLists.map((l) => (
+                    <li key={l.id}>
+                      <Link href={`/list/${l.id}`} className="flex items-center justify-between gap-2 text-stone-700 hover:text-brand">
+                        <span className="truncate">{l.title}</span>
+                        {!l.mine && <span className="flex-shrink-0 text-[10px] text-stone-400">♥ liked</span>}
+                      </Link>
+                    </li>
+                  ))}
+                </ul>
+              )}
+              {isOwnProfile && <Link href="/lists" className="mt-2 inline-block text-xs text-brand hover:underline">+ New list</Link>}
+            </div>
+          )}
 
           {/* Diary preview — Letterboxd-style, grouped by month */}
           <div className="rounded-lg border border-stone-200 bg-white p-3">

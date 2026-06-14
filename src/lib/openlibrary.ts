@@ -113,3 +113,29 @@ export async function fetchDescription(workKey: string): Promise<string> {
     return '';
   }
 }
+
+// Fetch a subject's most-popular works (Open Library ranks them roughly by
+// popularity). Used to seed the curated genre lists.
+export async function fetchSubjectWorks(
+  subject: string,
+  limit = 24
+): Promise<OLBook[]> {
+  const slug = subject.trim().toLowerCase().replace(/\s+/g, '_');
+  try {
+    const res = await fetch(
+      `https://openlibrary.org/subjects/${slug}.json?limit=${limit}`,
+      { cache: 'no-store' }
+    );
+    if (!res.ok) return [];
+    const data = await res.json();
+    return (data.works ?? []).map((w: any): OLBook => ({
+      key: w.key, // "/works/OL...W"
+      title: w.title,
+      author: w.authors?.[0]?.name,
+      year: w.first_publish_year,
+      coverId: w.cover_id,
+    }));
+  } catch {
+    return [];
+  }
+}

@@ -13,6 +13,7 @@ import ReviewItem from './ReviewItem';
 import { removeFromShelf } from '@/app/actions/shelf';
 import { logRead, deleteDiaryEntry } from '@/app/actions/diary';
 import { addContentWarning, removeContentWarning } from '@/app/actions/content-warnings';
+import { addBookToList } from '@/app/actions/lists';
 import { classifyBook } from '@/app/actions/genres';
 import { genreName } from '@/lib/genres';
 import StarRating from '@/components/StarRating';
@@ -70,6 +71,26 @@ export default async function BookPage({ params }: { params: { id: string } }) {
   const warnings = Array.from(cwAgg.entries())
     .map(([warning, v]) => ({ warning, count: v.count, mine: v.mine }))
     .sort((a, b) => b.count - a.count);
+
+  // The signed-in user's lists + which already contain this book.
+  let myLists: { id: string; title: string }[] = [];
+  const inLists = new Set<string>();
+  if (user) {
+    const { data: ml } = await supabase
+      .from('lists')
+      .select('id, title')
+      .eq('owner_id', user.id)
+      .order('created_at', { ascending: false });
+    myLists = ml ?? [];
+    if (myLists.length) {
+      const { data: li } = await supabase
+        .from('list_items')
+        .select('list_id')
+        .eq('book_id', book.id)
+        .in('list_id', myLists.map((l) => l.id));
+      (li ?? []).forEach((r: any) => inLists.add(r.list_id));
+    }
+  }
 
   // Genres for this book — classify on first view if not done yet.
   let bookGenres: string[] = [];
@@ -165,6 +186,23 @@ export default async function BookPage({ params }: { params: { id: string } }) {
               <input type="hidden" name="bookId" value={book.id} />
               <button className="text-sm text-red-600 hover:underline">Remove from shelf</button>
             </form>
+          )}
+          {user && (
+            <div className="mt-3">
+              {myLists.length > 0 ? (
+                <form action={addBookToList} className="flex flex-wrap items-center gap-2">
+                  <input type="hidden" name="bookId" value={book.id} />
+                  <select name="listId" className="rounded border border-slate-300 px-2 py-1 text-sm text-slate-700">
+                    {myLists.map((l) => (
+                      <option key={l.id} value={l.id} disabled={inLists.has(l.id)}>{l.title}{inLists.has(l.id) ? ' (added)' : ''}</option>
+                    ))}
+                  </select>
+                  <button className="rounded-full border border-stone-300 px-3 py-1 text-sm text-stone-700 hover:border-brand hover:text-brand">Add to list</button>
+                </form>
+              ) : (
+                <Link href="/lists" className="text-sm text-brand hover:underline">Create a list →</Link>
+              )}
+            </div>
           )}
         </div>
       </div>

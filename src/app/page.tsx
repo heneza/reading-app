@@ -4,6 +4,7 @@ import { createClient } from '@/utils/supabase/server';
 import { coverUrl } from '@/lib/openlibrary';
 import Avatar from '@/components/Avatar';
 import PostCard from '@/components/PostCard';
+import BookMarquee from '@/components/BookMarquee';
 import { timeAgo } from '@/lib/time';
 
 export const dynamic = 'force-dynamic';
@@ -81,10 +82,42 @@ export default async function ExplorePage() {
     cur.count += 1;
     tally.set(anyE.book_id, cur);
   }
-  const trending = Array.from(tally.values())
+  const trendingItems = Array.from(tally.values())
     .sort((a, b) => b.count - a.count)
-    .slice(0, 12)
+    .slice(0, 24)
     .map((t) => t.item);
+  const trendingTop = trendingItems.filter((_, i) => i % 2 === 0);
+  const trendingBottom = trendingItems.filter((_, i) => i % 2 === 1);
+
+  // A featured list that changes each load (force-dynamic). Picks a random
+  // list that has books in it.
+  let featured: { id: string; title: string; ownerName: string | null; items: CoverItem[] } | null = null;
+  {
+    const { data: ls } = await supabase.from('lists').select('id, title, owner_id');
+    const all = (ls ?? []).slice().sort(() => Math.random() - 0.5).slice(0, 6);
+    for (const l of all) {
+      const { data: its } = await supabase
+        .from('list_items')
+        .select('book_id, position, books ( title, author, cover_id )')
+        .eq('list_id', l.id)
+        .order('position', { ascending: true })
+        .limit(12);
+      if (its && its.length) {
+        let ownerName: string | null = null;
+        if (l.owner_id) {
+          const { data: o } = await supabase.from('profiles').select('username').eq('id', l.owner_id).maybeSingle();
+          ownerName = o?.username ?? null;
+        }
+        featured = {
+          id: l.id,
+          title: l.title,
+          ownerName,
+          items: its.map((it: any) => ({ bookId: it.book_id, title: it.books?.title, author: it.books?.author, coverId: it.books?.cover_id })),
+        };
+        break;
+      }
+    }
+  }
 
   // --- Logged-out: hero + trending ------------------------------------
   if (!user) {
@@ -103,10 +136,25 @@ export default async function ExplorePage() {
           </Link>
         </div>
 
-        {trending.length > 0 && (
+        {trendingItems.length > 0 && (
           <section>
             <h2 className="mb-3 text-lg font-semibold">Trending now</h2>
-            <CoverGrid items={trending} />
+            <div className="space-y-3">
+              <BookMarquee items={trendingTop} />
+              <BookMarquee items={trendingBottom} reverse />
+            </div>
+          </section>
+        )}
+
+        {featured && (
+          <section>
+            <div className="mb-3 flex items-end justify-between gap-3">
+              <h2 className="text-lg font-semibold">
+                From the lists: <Link href={`/list/${featured.id}`} className="text-brand hover:underline">{featured.title}</Link>
+              </h2>
+              <Link href="/lists" className="whitespace-nowrap text-sm text-brand hover:underline">All lists →</Link>
+            </div>
+            <CoverGrid items={featured.items} />
           </section>
         )}
       </div>
@@ -261,6 +309,30 @@ export default async function ExplorePage() {
         )}
       </header>
 
+      {/* Trending now — two opposite-scrolling rows */}
+      {trendingItems.length > 0 && (
+        <section>
+          <h2 className="mb-3 text-lg font-semibold">Trending now</h2>
+          <div className="space-y-3">
+            <BookMarquee items={trendingTop} />
+            <BookMarquee items={trendingBottom} reverse />
+          </div>
+        </section>
+      )}
+
+      {/* Featured list (changes each visit) */}
+      {featured && (
+        <section>
+          <div className="mb-3 flex items-end justify-between gap-3">
+            <h2 className="text-lg font-semibold">
+              From the lists: <Link href={`/list/${featured.id}`} className="text-brand hover:underline">{featured.title}</Link>
+            </h2>
+            <Link href="/lists" className="whitespace-nowrap text-sm text-brand hover:underline">All lists →</Link>
+          </div>
+          <CoverGrid items={featured.items} />
+        </section>
+      )}
+
       {/* Latest short-form posts */}
       <section>
         <h2 className="mb-3 text-lg font-semibold">Latest posts</h2>
@@ -373,13 +445,6 @@ export default async function ExplorePage() {
         )}
       </section>
 
-      {/* Trending */}
-      {trending.length > 0 && (
-        <section>
-          <h2 className="mb-3 text-lg font-semibold">Trending now</h2>
-          <CoverGrid items={trending} />
-        </section>
-      )}
     </div>
   );
 }
