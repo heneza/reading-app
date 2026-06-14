@@ -78,3 +78,22 @@ export async function fetchSubjects(workKey: string): Promise<string[]> {
     return [];
   }
 }
+
+// Look up a book edition by ISBN -> its work key, title, and cover id.
+export async function lookupByIsbn(
+  isbn: string
+): Promise<{ olKey: string; title: string; coverId?: number } | null> {
+  const clean = (isbn || '').replace(/[^0-9Xx]/g, '');
+  if (!clean) return null;
+  try {
+    const res = await fetch(`https://openlibrary.org/isbn/${clean}.json`, { cache: 'no-store' });
+    if (!res.ok) return null;
+    const data = await res.json();
+    const olKey = data?.works?.[0]?.key as string | undefined;
+    if (!olKey) return null;
+    const coverId = Array.isArray(data.covers) ? data.covers[0] : undefined;
+    return { olKey, title: data.title ?? '', coverId };
+  } catch {
+    return null;
+  }
+}
