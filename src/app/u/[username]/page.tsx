@@ -290,7 +290,7 @@ export default async function ProfilePage({
               </div>
               <p className="text-sm text-stone-400">@{profile.username}</p>
 
-              <p className="mt-1 flex flex-wrap gap-x-3 text-sm text-slate-500">
+              <p className="mt-1 flex flex-nowrap gap-x-3 whitespace-nowrap text-sm text-slate-500">
                 <Link href={connHref('followers')} className="hover:text-brand"><span className="font-medium text-slate-700">{followerIds.length}</span> followers</Link>
                 <Link href={connHref('following')} className="hover:text-brand"><span className="font-medium text-slate-700">{followingSet.size}</span> following</Link>
                 <Link href={connHref('friends')} className="hover:text-brand"><span className="font-medium text-slate-700">{friendCount}</span> friends</Link>
@@ -301,23 +301,22 @@ export default async function ProfilePage({
 
             </div>
 
-            {/* Middle: message + follow (sits in the gap), non-owner only */}
-            {!isOwnProfile && user && (
-              <div className="flex flex-shrink-0 items-center gap-2 pt-1">
-                <Link href={`/messages/${profile.username}`} title="Message" aria-label="Message"
-                  className="inline-flex h-9 w-9 items-center justify-center rounded-full border border-stone-300 text-stone-600 transition hover:border-brand hover:text-brand">
-                  <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z" /></svg>
-                </Link>
-                <form action={isFollowing ? unfollowUser : followUser}>
-                  <input type="hidden" name="followeeId" value={profile.id} />
-                  <input type="hidden" name="username" value={profile.username} />
-                  <button className={isFollowing ? 'rounded-full border border-stone-300 px-5 py-1.5 text-sm font-medium text-stone-700 transition hover:bg-stone-50' : 'rounded-full bg-brand px-5 py-1.5 text-sm font-medium text-white transition hover:opacity-90'}>{isFollowing ? 'Following' : 'Follow'}</button>
-                </form>
-              </div>
-            )}
 
-            {/* Right: socials above the reading bars */}
+            {/* Right: actions + socials above the reading bars */}
             <div className="flex flex-shrink-0 flex-col items-end gap-3">
+              {!isOwnProfile && user && (
+                <div className="flex items-center gap-2">
+                  <Link href={`/messages/${profile.username}`} title="Message" aria-label="Message"
+                    className="inline-flex h-9 w-9 items-center justify-center rounded-full border border-stone-300 text-stone-600 transition hover:border-brand hover:text-brand">
+                    <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z" /></svg>
+                  </Link>
+                  <form action={isFollowing ? unfollowUser : followUser}>
+                    <input type="hidden" name="followeeId" value={profile.id} />
+                    <input type="hidden" name="username" value={profile.username} />
+                    <button className={isFollowing ? 'rounded-full border border-stone-300 px-5 py-1.5 text-sm font-medium text-stone-700 transition hover:bg-stone-50' : 'rounded-full bg-brand px-5 py-1.5 text-sm font-medium text-white transition hover:opacity-90'}>{isFollowing ? 'Following' : 'Follow'}</button>
+                  </form>
+                </div>
+              )}
               {(profile.website || profile.instagram || profile.twitter) && (
                 <p className="flex flex-wrap items-center justify-end gap-3 text-sm">
                   {profile.website && <a href={profile.website} target="_blank" rel="noopener noreferrer" className="text-brand hover:underline">Website</a>}
