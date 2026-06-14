@@ -2,6 +2,7 @@
 
 import { revalidatePath } from 'next/cache';
 import { redirect } from 'next/navigation';
+import { headers } from 'next/headers';
 import { createClient } from '@/utils/supabase/server';
 import { normalizeUsername, validateUsername } from '@/lib/username';
 
@@ -73,4 +74,20 @@ export async function signout() {
   await supabase.auth.signOut();
   revalidatePath('/', 'layout');
   redirect('/login');
+}
+
+
+// Start "Continue with Google" — redirects to Google, which returns to
+// /auth/callback. Requires the Google provider enabled in Supabase.
+export async function signInWithGoogle() {
+  const supabase = createClient();
+  const origin = headers().get('origin') ?? '';
+  const { data, error } = await supabase.auth.signInWithOAuth({
+    provider: 'google',
+    options: { redirectTo: `${origin}/auth/callback` },
+  });
+  if (error || !data?.url) {
+    redirect('/login?error=' + encodeURIComponent('Could not start Google sign-in.'));
+  }
+  redirect(data.url);
 }
