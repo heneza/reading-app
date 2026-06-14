@@ -226,6 +226,24 @@ export default async function ProfilePage({
   });
   const maxBucket = Math.max(1, ...ratingBuckets);
 
+  // Recently read: newest diary logs first (distinct books), then fall back
+  // to recently-read shelf books so the row is populated even without a diary.
+  const recentSeen = new Set<string>();
+  const recentRead: { book_id: string; title?: string; cover_id?: number | null; rating?: number | null }[] = [];
+  diaryPreview.forEach((d: any) => {
+    if (recentSeen.has(d.book_id)) return;
+    recentSeen.add(d.book_id);
+    recentRead.push({ book_id: d.book_id, title: d.books?.title, cover_id: d.books?.cover_id, rating: d.rating });
+  });
+  list
+    .filter((e: any) => e.status === 'read')
+    .forEach((e: any) => {
+      if (recentRead.length >= 12 || recentSeen.has(e.book_id)) return;
+      recentSeen.add(e.book_id);
+      recentRead.push({ book_id: e.book_id, title: e.books?.title, cover_id: e.books?.cover_id, rating: e.rating });
+    });
+  const recentReadRow = recentRead.slice(0, 12);
+
   const grouped = STATUS_ORDER.map((status) => ({ status, items: list.filter((e: any) => e.status === status) })).filter((g) => g.items.length > 0);
   const connHref = (t: string) => `/u/${profile.username}/connections?type=${t}`;
   const tabHref = (t: string) => `/u/${profile.username}?tab=${t}`;
@@ -319,6 +337,27 @@ export default async function ProfilePage({
                         <div className="aspect-[2/3] w-full overflow-hidden rounded bg-slate-100 group-hover:opacity-90">
                           {src && <Image src={src} alt={f.books?.title ?? ''} width={200} height={300} className="h-full w-full object-cover" />}
                         </div>
+                      </Link>
+                    </li>
+                  );
+                })}
+              </ul>
+            </section>
+          )}
+
+          {recentReadRow.length > 0 && (
+            <section className={favs.length > 0 ? 'mt-8' : ''}>
+              <h2 className="mb-3 text-sm font-semibold uppercase tracking-wide text-slate-400">Recently read</h2>
+              <ul className="grid grid-cols-4 gap-3 sm:grid-cols-6">
+                {recentReadRow.map((b) => {
+                  const src = coverUrl(b.cover_id, 'M');
+                  return (
+                    <li key={b.book_id}>
+                      <Link href={`/book/${b.book_id}`} className="group block">
+                        <div className="aspect-[2/3] w-full overflow-hidden rounded bg-slate-100 group-hover:opacity-90">
+                          {src && <Image src={src} alt={b.title ?? ''} width={200} height={300} className="h-full w-full object-cover" />}
+                        </div>
+                        {b.rating != null && <p className="mt-1 text-center text-xs text-stone-500">{Number(b.rating)}★</p>}
                       </Link>
                     </li>
                   );
