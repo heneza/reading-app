@@ -38,7 +38,7 @@ const STATUS_LABEL: Record<string, string> = {
   dnf: 'Did not finish',
 };
 const STATUS_ORDER = ['reading', 'want_to_read', 'read', 'dnf'];
-const TAB_BAR = ['posts', 'likes', 'replies', 'reviews', 'diary'] as const;
+const TAB_BAR = ['posts', 'likes', 'replies', 'reviews'] as const;
 const ALL_TABS = ['posts', 'likes', 'replies', 'reviews', 'diary', 'shelf'];
 type Tab = 'posts' | 'likes' | 'replies' | 'reviews' | 'diary' | 'shelf';
 
@@ -91,6 +91,24 @@ export default async function ProfilePage({
     .eq('user_id', profile.id)
     .order('position');
   const favs = favRows ?? [];
+
+  // Recent diary entries for the sidebar preview (newest first).
+  const { data: diaryRows } = await supabase
+    .from('diary_entries')
+    .select('id, read_on, rating, book_id, books ( title, cover_id )')
+    .eq('user_id', profile.id)
+    .order('read_on', { ascending: false })
+    .order('created_at', { ascending: false })
+    .limit(12);
+  const diaryPreview = diaryRows ?? [];
+
+  // Books logged this calendar year (diary entries; rereads count too).
+  const yearStart = `${new Date().getFullYear()}-01-01`;
+  const { count: thisYearCount } = await supabase
+    .from('diary_entries')
+    .select('id', { count: 'exact', head: true })
+    .eq('user_id', profile.id)
+    .gte('read_on', yearStart);
 
   const { data: followerRows } = await supabase.from('follows').select('follower_id').eq('followee_id', profile.id);
   const { data: followingRows } = await supabase.from('follows').select('followee_id').eq('follower_id', profile.id);
@@ -180,63 +198,109 @@ export default async function ProfilePage({
     diary = dv ?? [];
   }
 
+  // Group the diary preview by calendar month for the sidebar card.
+  const diaryByMonth: { key: string; label: string; items: any[] }[] = [];
+  {
+    const map = new Map<string, any[]>();
+    diaryPreview.forEach((d: any) => {
+      const key = String(d.read_on).slice(0, 7); // "YYYY-MM"
+      if (!map.has(key)) map.set(key, []);
+      map.get(key)!.push(d);
+    });
+    Array.from(map.entries()).forEach(([key, items]) => {
+      const [y, m] = key.split('-').map(Number);
+      const label = new Date(y, m - 1, 1).toLocaleDateString(undefined, { month: 'short' }).toUpperCase();
+      diaryByMonth.push({ key, label, items });
+    });
+  }
+
+  // Ratings distribution: ten half-star buckets (0.5 .. 5.0) from shelf ratings.
+  const ratingValues = list
+    .map((e: any) => e.rating)
+    .filter((r: any) => r != null)
+    .map((r: any) => Number(r));
+  const ratingBuckets = Array.from({ length: 10 }, () => 0);
+  ratingValues.forEach((r: number) => {
+    const idx = Math.min(9, Math.max(0, Math.round(r * 2) - 1)); // 0.5->0 ... 5.0->9
+    ratingBuckets[idx]++;
+  });
+  const maxBucket = Math.max(1, ...ratingBuckets);
+
   const grouped = STATUS_ORDER.map((status) => ({ status, items: list.filter((e: any) => e.status === status) })).filter((g) => g.items.length > 0);
   const connHref = (t: string) => `/u/${profile.username}/connections?type=${t}`;
   const tabHref = (t: string) => `/u/${profile.username}?tab=${t}`;
   const TAB_LABEL: Record<string, string> = { posts: 'Posts', likes: 'Likes', replies: 'Replies', reviews: 'Reviews', diary: 'Diary' };
 
+  // Header stat blocks (Letterboxd-style: big number + small label).
+  const stats: { label: string; value: number; href: string }[] = [
+    { label: 'Books', value: list.length, href: `/u/${profile.username}?tab=shelf` },
+    { label: 'This year', value: thisYearCount ?? 0, href: `/u/${profile.username}?tab=diary` },
+    { label: 'Friends', value: friendCount, href: connHref('friends') },
+    { label: 'Following', value: followingSet.size, href: connHref('following') },
+    { label: 'Followers', value: followerIds.length, href: connHref('followers') },
+  ];
+
   return (
     <div>
-      {/* --- Profile header --- */}
-      <div className="flex items-start justify-between gap-4">
-        <div className="flex min-w-0 items-start gap-4">
-          <Avatar src={profile.avatar_url} name={profile.display_name ?? profile.username} size={72} />
-          <div className="min-w-0">
-            <h1 className="text-2xl font-bold">{profile.display_name ?? profile.username}</h1>
-            <p className="text-sm text-slate-500">@{profile.username}</p>
-            <p className="mt-1 flex flex-wrap gap-x-3 text-sm text-slate-500">
-              <Link href={connHref('followers')} className="hover:text-brand"><span className="font-medium text-slate-700">{followerIds.length}</span> followers</Link>
-              <Link href={connHref('following')} className="hover:text-brand"><span className="font-medium text-slate-700">{followingSet.size}</span> following</Link>
-              <Link href={connHref('friends')} className="hover:text-brand"><span className="font-medium text-slate-700">{friendCount}</span> friends</Link>
-              <span><span className="font-medium text-slate-700">{list.length}</span> book{list.length === 1 ? '' : 's'}</span>
-            </p>
-            {profile.bio && <p className="mt-2 whitespace-pre-wrap text-slate-700">{linkifyMentions(profile.bio, validMentions)}</p>}
-            {(profile.website || profile.instagram || profile.twitter) && (
-              <p className="mt-2 flex flex-wrap items-center gap-3 text-sm">
-                {profile.website && <a href={profile.website} target="_blank" rel="noopener noreferrer" className="text-brand hover:underline">Website</a>}
-                {profile.instagram && (
-                  <a href={`https://instagram.com/${profile.instagram}`} target="_blank" rel="noopener noreferrer" aria-label="Instagram" className="text-brand hover:opacity-70">
-                    <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><rect x="2" y="2" width="20" height="20" rx="5" /><circle cx="12" cy="12" r="4" /><circle cx="17.5" cy="6.5" r="1.2" fill="currentColor" stroke="none" /></svg>
-                  </a>
-                )}
-                {profile.twitter && (
-                  <a href={`https://x.com/${profile.twitter}`} target="_blank" rel="noopener noreferrer" aria-label="X" className="text-brand hover:opacity-70">
-                    <svg width="16" height="16" viewBox="0 0 24 24" fill="currentColor"><path d="M18.244 2.25h3.308l-7.227 8.26 8.502 11.24h-6.66l-5.214-6.817L4.99 21.75H1.68l7.73-8.835L1.254 2.25H8.08l4.713 6.231zm-1.161 17.52h1.833L7.084 4.126H5.117z" /></svg>
-                  </a>
-                )}
-              </p>
-            )}
-            {favGenres.length > 0 && (
-              <div className="mt-3 flex flex-wrap gap-2">
-                {favGenres.map((slug: string) => <span key={slug} className="rounded-full bg-brand-soft px-3 py-1 text-xs font-medium text-brand">{genreName(slug)}</span>)}
+      {/* --- Profile header (Letterboxd-style: avatar + name/actions left, stats right) --- */}
+      <div className="flex items-start gap-4">
+        <Avatar src={profile.avatar_url} name={profile.display_name ?? profile.username} size={72} />
+        <div className="min-w-0 flex-1">
+          <div className="flex flex-wrap items-start justify-between gap-x-8 gap-y-4">
+            {/* Name + actions */}
+            <div className="min-w-0">
+              <h1 className="text-2xl font-bold">{profile.display_name ?? profile.username}</h1>
+              <p className="text-sm text-slate-500">@{profile.username}</p>
+              <div className="mt-2 flex flex-wrap items-center gap-2">
+                <ShareButton username={profile.username} />
+                {isOwnProfile ? (
+                  <Link href="/settings/profile" className="whitespace-nowrap rounded-full border border-slate-300 px-4 py-1.5 text-sm font-medium text-slate-700 hover:bg-slate-100">Edit profile</Link>
+                ) : user ? (
+                  <>
+                    <Link href={`/messages/${profile.username}`} className="whitespace-nowrap rounded-full border border-slate-300 px-4 py-1.5 text-sm font-medium text-slate-700 hover:bg-slate-100">Message</Link>
+                    <form action={isFollowing ? unfollowUser : followUser}>
+                      <input type="hidden" name="followeeId" value={profile.id} />
+                      <input type="hidden" name="username" value={profile.username} />
+                      <button className={isFollowing ? 'rounded-full border border-slate-300 px-4 py-1.5 text-sm font-medium text-slate-700 hover:bg-slate-100' : 'rounded-full bg-brand px-4 py-1.5 text-sm font-medium text-white hover:opacity-90'}>{isFollowing ? 'Following' : 'Follow'}</button>
+                    </form>
+                  </>
+                ) : null}
               </div>
-            )}
+            </div>
+
+            {/* Stat blocks */}
+            <div className="flex flex-shrink-0 flex-wrap items-start gap-x-6 gap-y-3">
+              {stats.map((st) => (
+                <Link key={st.label} href={st.href} className="group text-center">
+                  <div className="text-xl font-bold leading-tight text-slate-800 group-hover:text-brand">{st.value.toLocaleString()}</div>
+                  <div className="text-[11px] font-medium uppercase tracking-wide text-slate-400 group-hover:text-brand">{st.label}</div>
+                </Link>
+              ))}
+            </div>
           </div>
-        </div>
-        <div className="flex flex-shrink-0 items-center gap-2">
-          <ShareButton username={profile.username} />
-          {isOwnProfile ? (
-            <Link href="/settings/profile" className="whitespace-nowrap rounded-full border border-slate-300 px-4 py-1.5 text-sm font-medium text-slate-700 hover:bg-slate-100">Edit profile</Link>
-          ) : user ? (
-            <>
-              <Link href={`/messages/${profile.username}`} className="whitespace-nowrap rounded-full border border-slate-300 px-4 py-1.5 text-sm font-medium text-slate-700 hover:bg-slate-100">Message</Link>
-              <form action={isFollowing ? unfollowUser : followUser}>
-                <input type="hidden" name="followeeId" value={profile.id} />
-                <input type="hidden" name="username" value={profile.username} />
-                <button className={isFollowing ? 'rounded-full border border-slate-300 px-4 py-1.5 text-sm font-medium text-slate-700 hover:bg-slate-100' : 'rounded-full bg-brand px-4 py-1.5 text-sm font-medium text-white hover:opacity-90'}>{isFollowing ? 'Following' : 'Follow'}</button>
-              </form>
-            </>
-          ) : null}
+
+          {/* Bio + social + genres */}
+          {profile.bio && <p className="mt-3 whitespace-pre-wrap text-slate-700">{linkifyMentions(profile.bio, validMentions)}</p>}
+          {(profile.website || profile.instagram || profile.twitter) && (
+            <p className="mt-2 flex flex-wrap items-center gap-3 text-sm">
+              {profile.website && <a href={profile.website} target="_blank" rel="noopener noreferrer" className="text-brand hover:underline">Website</a>}
+              {profile.instagram && (
+                <a href={`https://instagram.com/${profile.instagram}`} target="_blank" rel="noopener noreferrer" aria-label="Instagram" className="text-brand hover:opacity-70">
+                  <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><rect x="2" y="2" width="20" height="20" rx="5" /><circle cx="12" cy="12" r="4" /><circle cx="17.5" cy="6.5" r="1.2" fill="currentColor" stroke="none" /></svg>
+                </a>
+              )}
+              {profile.twitter && (
+                <a href={`https://x.com/${profile.twitter}`} target="_blank" rel="noopener noreferrer" aria-label="X" className="text-brand hover:opacity-70">
+                  <svg width="16" height="16" viewBox="0 0 24 24" fill="currentColor"><path d="M18.244 2.25h3.308l-7.227 8.26 8.502 11.24h-6.66l-5.214-6.817L4.99 21.75H1.68l7.73-8.835L1.254 2.25H8.08l4.713 6.231zm-1.161 17.52h1.833L7.084 4.126H5.117z" /></svg>
+                </a>
+              )}
+            </p>
+          )}
+          {favGenres.length > 0 && (
+            <div className="mt-3 flex flex-wrap gap-2">
+              {favGenres.map((slug: string) => <span key={slug} className="rounded-full bg-brand-soft px-3 py-1 text-xs font-medium text-brand">{genreName(slug)}</span>)}
+            </div>
+          )}
         </div>
       </div>
 
@@ -263,7 +327,7 @@ export default async function ProfilePage({
             </section>
           )}
         </div>
-        <aside className="sm:w-44 sm:flex-shrink-0">
+        <aside className="space-y-4 sm:w-44 sm:flex-shrink-0">
           <div className="rounded-lg border border-stone-200 bg-white p-3">
             <div className="mb-2 flex items-center justify-between">
               <h3 className="text-sm font-semibold text-stone-700">Shelf</h3>
@@ -288,6 +352,54 @@ export default async function ProfilePage({
               </ul>
             )}
           </div>
+
+          {/* Diary preview — Letterboxd-style, grouped by month */}
+          <div className="rounded-lg border border-stone-200 bg-white p-3">
+            <div className="mb-2 flex items-center justify-between">
+              <h3 className="text-sm font-semibold text-stone-700">Diary</h3>
+              <Link href={`/u/${profile.username}?tab=diary`} className="text-xs text-brand hover:underline">Visit diary →</Link>
+            </div>
+            {diaryPreview.length === 0 ? (
+              <p className="text-xs text-stone-400">No entries yet.</p>
+            ) : (
+              <ul className="space-y-2 text-sm">
+                {diaryByMonth.map((g) => (
+                  <li key={g.key} className="flex gap-2">
+                    <span className="w-8 flex-shrink-0 pt-0.5 text-[10px] font-semibold uppercase tracking-wide text-stone-400">{g.label}</span>
+                    <ul className="min-w-0 flex-1 space-y-1">
+                      {g.items.map((d: any) => (
+                        <li key={d.id} className="flex gap-2">
+                          <span className="w-4 flex-shrink-0 text-right text-xs text-stone-400">{Number(String(d.read_on).slice(8, 10))}</span>
+                          <Link href={`/book/${d.book_id}`} title={d.books?.title} className="min-w-0 flex-1 truncate text-stone-700 hover:text-brand hover:underline">{d.books?.title}</Link>
+                        </li>
+                      ))}
+                    </ul>
+                  </li>
+                ))}
+              </ul>
+            )}
+          </div>
+
+          {/* Ratings distribution histogram */}
+          {ratingValues.length > 0 && (
+            <div className="rounded-lg border border-stone-200 bg-white p-3">
+              <div className="mb-2 flex items-center justify-between">
+                <h3 className="text-sm font-semibold text-stone-700">Ratings</h3>
+                <span className="text-xs text-stone-400">{ratingValues.length}</span>
+              </div>
+              <div className="flex h-16 items-end gap-[3px]">
+                {ratingBuckets.map((c, i) => (
+                  <div key={i} className="flex h-full flex-1 items-end" title={`${(i + 1) / 2}★ — ${c}`}>
+                    <div className="w-full rounded-sm bg-brand" style={{ height: `${(c / maxBucket) * 100}%` }} />
+                  </div>
+                ))}
+              </div>
+              <div className="mt-1 flex items-center justify-between text-[10px] text-brand">
+                <span>★</span>
+                <span>★★★★★</span>
+              </div>
+            </div>
+          )}
         </aside>
       </div>
 
