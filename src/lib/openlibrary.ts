@@ -26,7 +26,7 @@ export async function searchBooks(query: string): Promise<OLBook[]> {
     '&fields=key,title,author_name,first_publish_year,cover_i';
 
   try {
-    const res = await fetch(url, { cache: 'no-store', signal: AbortSignal.timeout(8000) });
+    const res = await fetch(url, { cache: 'no-store', signal: AbortSignal.timeout(14000) });
     if (!res.ok) return [];
     const data = await res.json();
     return (data.docs ?? []).map((d: any): OLBook => ({
@@ -51,7 +51,7 @@ export async function searchAuthors(query: string): Promise<OLAuthor[]> {
     `?q=${encodeURIComponent(q)}&limit=20`;
 
   try {
-    const res = await fetch(url, { cache: 'no-store', signal: AbortSignal.timeout(8000) });
+    const res = await fetch(url, { cache: 'no-store', signal: AbortSignal.timeout(14000) });
     if (!res.ok) return [];
     const data = await res.json();
     return (data.docs ?? []).map((d: any): OLAuthor => ({

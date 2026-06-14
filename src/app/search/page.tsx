@@ -17,6 +17,7 @@ function Empty({ children }: { children: React.ReactNode }) {
 
 // Always render fresh (no caching) so data and login state are current.
 export const dynamic = 'force-dynamic';
+export const maxDuration = 20; // allow slow Open Library responses to finish
 
 export default async function SearchPage({
   searchParams,
