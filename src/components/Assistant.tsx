@@ -62,7 +62,7 @@ export default function Assistant() {
             {messages.map((m, i) => (
               <div key={i} className={m.role === 'user' ? 'text-right' : 'text-left'}>
                 <span
-                  className={`inline-block max-w-[85%] whitespace-pre-wrap rounded-2xl px-3 py-2 text-sm ${
+                  className={`inline-block max-w-[85%] whitespace-pre-wrap rounded-2xl px-3 py-2 text-left text-sm ${
                     m.role === 'user' ? 'bg-brand text-white' : 'bg-stone-100 text-stone-700'
                   }`}
                 >

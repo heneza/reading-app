@@ -116,7 +116,7 @@ export async function POST(req: Request) {
             role: m.role === 'assistant' ? 'model' : 'user',
             parts: [{ text: m.content }],
           })),
-          generationConfig: { maxOutputTokens: 700, temperature: 0.7 },
+          generationConfig: { maxOutputTokens: 1024, temperature: 0.7, thinkingConfig: { thinkingBudget: 0 } },
         }),
       }
     );
