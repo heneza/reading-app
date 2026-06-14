@@ -330,8 +330,9 @@ export default async function ProfilePage({
 
               {(booksGoal > 0 || hoursGoal > 0) ? (
                 <div className="w-full sm:w-80 space-y-2.5 rounded-xl border border-stone-200/80 bg-white/70 p-3.5">
+                  <h3 className="text-sm font-semibold text-stone-700">Reading goals</h3>
                   <div>
-                    <div className="mb-1 flex items-baseline justify-between">
+                    <div className="mb-1 flex items-baseline justify-between gap-3">
                       <span className="text-xs font-medium text-stone-500">Books this year</span>
                       <span className="text-xs font-semibold text-stone-700">{booksThisYear}<span className="text-stone-400"> / {booksGoal > 0 ? booksGoal : '—'}</span></span>
                     </div>
@@ -340,7 +341,7 @@ export default async function ProfilePage({
                     </div>
                   </div>
                   <div>
-                    <div className="mb-1 flex items-baseline justify-between">
+                    <div className="mb-1 flex items-baseline justify-between gap-3">
                       <span className="text-xs font-medium text-stone-500">Hours this year</span>
                       <span className="text-xs font-semibold text-stone-700">{hoursThisYear.toFixed(1)}<span className="text-stone-400"> / {hoursGoal > 0 ? hoursGoal : '—'}</span></span>
                     </div>
