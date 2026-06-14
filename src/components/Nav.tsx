@@ -33,6 +33,16 @@ export default async function Nav() {
     unread = count ?? 0;
   }
 
+  let notifUnread = 0;
+  if (user) {
+    const { count } = await supabase
+      .from('notifications')
+      .select('id', { count: 'exact', head: true })
+      .eq('user_id', user.id)
+      .eq('read', false);
+    notifUnread = count ?? 0;
+  }
+
   const item =
     'block px-4 py-2 text-sm text-slate-600 transition hover:bg-brand-soft hover:text-brand';
 
@@ -53,6 +63,14 @@ export default async function Nav() {
         </form>
 
         <div className="ml-auto flex items-center gap-2 text-sm">
+          {user && (
+            <Link href="/notifications" title="Notifications" className="relative rounded-full px-2 py-1.5 text-slate-600 transition hover:bg-brand-soft hover:text-brand">
+              <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M18 8A6 6 0 0 0 6 8c0 7-3 9-3 9h18s-3-2-3-9" /><path d="M13.73 21a2 2 0 0 1-3.46 0" /></svg>
+              {notifUnread > 0 && (
+                <span className="absolute right-0 top-0 flex h-4 min-w-[1rem] items-center justify-center rounded-full bg-brand px-1 text-[10px] font-semibold text-white">{notifUnread}</span>
+              )}
+            </Link>
+          )}
           <Link
             href="/articles"
             className="rounded-full px-3 py-1.5 text-slate-600 transition hover:bg-brand-soft hover:text-brand"

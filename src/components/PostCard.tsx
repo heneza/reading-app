@@ -1,6 +1,7 @@
 import Link from 'next/link';
 import Avatar from '@/components/Avatar';
 import { timeAgo } from '@/lib/time';
+import PostEditToggle from '@/components/PostEditToggle';
 import { createClient } from '@/utils/supabase/server';
 import {
   deletePost,
@@ -40,6 +41,7 @@ export default async function PostCard({
   const dislikes = reactions.filter((r: any) => r.type === 'dislike').length;
   const myReaction = user ? reactions.find((r: any) => r.user_id === user.id)?.type ?? null : null;
   const iReposted = user ? reposters.some((r: any) => r.user_id === user.id) : false;
+  const withinHour = Date.now() - new Date(post.created_at).getTime() < 3600000;
 
   const nameById = new Map<string, any>();
   const cids = Array.from(new Set(comments.map((c: any) => c.user_id)));
@@ -150,6 +152,17 @@ export default async function PostCard({
           )}
         </div>
       </details>
+
+      {canDelete && (
+        <div className="mt-2 border-t border-stone-100 pt-2">
+          <PostEditToggle
+            postId={post.id}
+            initialHtml={post.body_html}
+            initialTags={post.tags ?? []}
+            canEditBody={withinHour}
+          />
+        </div>
+      )}
     </article>
   );
 }
