@@ -11,7 +11,16 @@ export async function GET(request: Request) {
   if (code) {
     const supabase = createClient();
     const { error } = await supabase.auth.exchangeCodeForSession(code);
-    if (!error) return NextResponse.redirect(`${origin}${next}`);
+    if (!error) {
+      // First-time OAuth users go through the same /welcome onboarding.
+      const { data: { user } } = await supabase.auth.getUser();
+      let dest = next;
+      if (user) {
+        const { data: p } = await supabase.from('profiles').select('onboarded').eq('id', user.id).maybeSingle();
+        if (p && p.onboarded === false) dest = '/welcome';
+      }
+      return NextResponse.redirect(`${origin}${dest}`);
+    }
   }
   return NextResponse.redirect(`${origin}/login?error=${encodeURIComponent('Could not sign in. Please try again.')}`);
 }

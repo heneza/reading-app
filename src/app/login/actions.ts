@@ -27,6 +27,12 @@ export async function login(formData: FormData) {
     redirect('/login?error=' + encodeURIComponent('Invalid login — check your email/username and password.'));
   }
   revalidatePath('/', 'layout');
+  // Send users who never finished onboarding to /welcome.
+  const { data: { user: signedIn } } = await supabase.auth.getUser();
+  if (signedIn) {
+    const { data: prof } = await supabase.from('profiles').select('onboarded').eq('id', signedIn.id).maybeSingle();
+    if (prof && prof.onboarded === false) redirect('/welcome');
+  }
   redirect('/');
 }
 

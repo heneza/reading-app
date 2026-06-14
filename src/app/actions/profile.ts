@@ -158,14 +158,29 @@ export async function setVisibility(formData: FormData) {
 // Finish onboarding: set the display name + starter genres, then go home.
 export async function completeOnboarding(
   displayName: string,
+  username: string,
   slugs: string[]
 ): Promise<{ error: string | null }> {
   const supabase = createClient();
   const { data: { user } } = await supabase.auth.getUser();
   if (!user) return { error: 'You are not signed in.' };
 
+  const { data: me } = await supabase.from('profiles').select('username').eq('id', user.id).maybeSingle();
+
+  // Username — validate + ensure unique only if it changed.
+  const uname = normalizeUsername(username ?? '');
+  if (uname && uname !== me?.username) {
+    const fmtError = validateUsername(uname);
+    if (fmtError) return { error: fmtError };
+    const { data: taken } = await supabase
+      .from('profiles').select('id').ilike('username', uname).neq('id', user.id).maybeSingle();
+    if (taken) return { error: `@${uname} is taken — please choose another.` };
+    const { error: uErr } = await supabase.from('profiles').update({ username: uname }).eq('id', user.id);
+    if (uErr) return { error: 'Could not set that username.' };
+  }
+
   const name = String(displayName ?? '').trim().slice(0, 80) || null;
-  await supabase.from('profiles').update({ display_name: name }).eq('id', user.id);
+  await supabase.from('profiles').update({ display_name: name, onboarded: true }).eq('id', user.id);
 
   await supabase.from('profile_genres').delete().eq('user_id', user.id);
   const clean = (slugs ?? []).filter((x) => typeof x === 'string').slice(0, 29);
@@ -173,7 +188,7 @@ export async function completeOnboarding(
     await supabase.from('profile_genres').insert(clean.map((genre) => ({ user_id: user.id, genre })));
   }
 
-  const { data: p } = await supabase.from('profiles').select('username').eq('id', user.id).maybeSingle();
-  if (p?.username) revalidatePath(`/u/${p.username}`);
+  const finalU = uname || me?.username;
+  if (finalU) revalidatePath(`/u/${finalU}`);
   return { error: null };
 }

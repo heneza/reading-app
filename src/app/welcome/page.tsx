@@ -23,7 +23,7 @@ export default async function WelcomePage() {
       <h1 className="text-2xl font-bold">Welcome to Reading App</h1>
       <p className="mt-1 text-stone-500">A couple of quick things and your profile is ready.</p>
       <WelcomeForm
-        username={p?.username ?? ''}
+        initialUsername={p?.username ?? ''}
         defaultName={p?.display_name ?? p?.username ?? ''}
         initialGenres={initialGenres}
       />
