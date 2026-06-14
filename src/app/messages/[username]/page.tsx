@@ -1,8 +1,7 @@
 import Link from 'next/link';
 import { notFound, redirect } from 'next/navigation';
 import { createClient } from '@/utils/supabase/server';
-import MessageComposer from './MessageComposer';
-import MessageList from './MessageList';
+import Thread from './Thread';
 import Avatar from '@/components/Avatar';
 import { blockUser, unblockUser } from '@/app/actions/blocks';
 
@@ -87,17 +86,13 @@ export default async function ThreadPage({
         </p>
       )}
 
-      <div className="flex-1 space-y-2 overflow-y-auto rounded-lg border border-stone-200 bg-white p-4">
-        <MessageList
-          messages={messages}
-          meId={user.id}
-          showSeen={other.read_receipts !== false}
-        />
-      </div>
-
-      <div className="mt-3">
-        <MessageComposer recipientId={other.id} />
-      </div>
+      <Thread
+        initialMessages={messages}
+        meId={user.id}
+        otherId={other.id}
+        otherUsername={other.username}
+        showSeen={other.read_receipts !== false}
+      />
     </div>
   );
 }
