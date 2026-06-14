@@ -389,9 +389,9 @@ export default async function ProfilePage({
       {/* --- Favourites + Shelf (same line) --- */}
       <div className="mt-8 flex flex-col gap-6 sm:flex-row sm:items-start">
         <div className="min-w-0 flex-1">
-          {favs.length > 0 && (
-            <section>
-              <h2 className="mb-3 text-sm font-semibold uppercase tracking-wide text-slate-400">Favourites</h2>
+          <section>
+            <h2 className="mb-3 text-sm font-semibold uppercase tracking-wide text-slate-400">Favourites</h2>
+            {favs.length > 0 ? (
               <ul className="grid max-w-md grid-cols-4 gap-3">
                 {favs.map((f: any) => {
                   const src = coverUrl(f.books?.cover_id, 'M');
@@ -406,12 +406,21 @@ export default async function ProfilePage({
                   );
                 })}
               </ul>
-            </section>
-          )}
+            ) : (
+              <>
+                <ul className="grid max-w-md grid-cols-4 gap-3">
+                  {[0, 1, 2, 3].map((i) => (
+                    <li key={i}><div className="aspect-[2/3] w-full rounded border border-dashed border-stone-200 bg-stone-50" /></li>
+                  ))}
+                </ul>
+                <p className="mt-2 text-sm text-stone-400">{isOwnProfile ? 'Pick your top books in Edit profile.' : 'No favourite books yet.'}</p>
+              </>
+            )}
+          </section>
 
-          {recentReadRow.length > 0 && (
-            <section className={favs.length > 0 ? 'mt-8' : ''}>
-              <h2 className="mb-3 text-sm font-semibold uppercase tracking-wide text-slate-400">Recently read</h2>
+          <section className="mt-8">
+            <h2 className="mb-3 text-sm font-semibold uppercase tracking-wide text-slate-400">Recently read ({recentReadRow.length})</h2>
+            {recentReadRow.length > 0 ? (
               <ul className="grid max-w-md grid-cols-4 gap-3">
                 {recentReadRow.map((b) => {
                   const src = coverUrl(b.cover_id, 'M');
@@ -427,8 +436,17 @@ export default async function ProfilePage({
                   );
                 })}
               </ul>
-            </section>
-          )}
+            ) : (
+              <>
+                <ul className="grid max-w-md grid-cols-4 gap-3">
+                  {[0, 1, 2, 3].map((i) => (
+                    <li key={i}><div className="aspect-[2/3] w-full rounded border border-dashed border-stone-200 bg-stone-50" /></li>
+                  ))}
+                </ul>
+                <p className="mt-2 text-sm text-stone-400">{isOwnProfile ? 'Books you read will show up here. Search a book and log it.' : 'No books read yet.'}</p>
+              </>
+            )}
+          </section>
         </div>
         <aside className="space-y-4 sm:w-80 sm:flex-shrink-0">
           <div className="rounded-lg border border-stone-200 bg-white p-3">
