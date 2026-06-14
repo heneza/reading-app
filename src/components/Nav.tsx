@@ -33,8 +33,8 @@ export default async function Nav() {
     unread = count ?? 0;
   }
 
-  const pill =
-    'rounded-full px-3 py-1.5 text-slate-600 transition hover:bg-brand-soft hover:text-brand';
+  const item =
+    'block px-4 py-2 text-sm text-slate-600 transition hover:bg-brand-soft hover:text-brand';
 
   return (
     <header className="sticky top-0 z-20 border-b border-slate-200/70 bg-white/80 backdrop-blur">
@@ -43,7 +43,7 @@ export default async function Nav() {
           Reading App
         </Link>
 
-        {/* Header search box — submits to the search page */}
+        {/* Search box */}
         <form action="/search" className="hidden flex-1 sm:block">
           <input
             name="q"
@@ -52,40 +52,68 @@ export default async function Nav() {
           />
         </form>
 
-        <div className="ml-auto flex items-center gap-1 text-sm">
-          <Link href="/search" className={pill}>
-            Search
-          </Link>
+        <div className="ml-auto flex items-center gap-2 text-sm">
           {user ? (
-            <>
-              <Link href="/messages" className={`relative ${pill}`}>
-                Messages
-                {unread > 0 && (
-                  <span className="absolute -right-0.5 -top-0.5 flex h-4 min-w-[1rem] items-center justify-center rounded-full bg-brand px-1 text-[10px] font-semibold text-white">
-                    {unread}
-                  </span>
-                )}
+            /* Profile menu (reveals on hover) */
+            <div className="group relative">
+              <Link
+                href={username ? `/u/${username}` : '/settings'}
+                className="flex items-center gap-2 rounded-full px-2 py-1.5 text-slate-600 transition hover:bg-brand-soft"
+              >
+                <span className="relative">
+                  <Avatar src={avatarUrl} name={displayName ?? username ?? 'you'} size={28} />
+                  {unread > 0 && (
+                    <span className="absolute -right-1 -top-1 flex h-4 min-w-[1rem] items-center justify-center rounded-full bg-brand px-1 text-[10px] font-semibold text-white">
+                      {unread}
+                    </span>
+                  )}
+                </span>
+                <span className="hidden sm:inline">Profile</span>
               </Link>
-              {username && (
-                <Link href={`/u/${username}`} className={`flex items-center gap-2 ${pill}`}>
-                  <Avatar src={avatarUrl} name={displayName ?? username} size={24} />
-                  Profile
-                </Link>
-              )}
-              <Link href="/settings" className={pill}>
-                Settings
-              </Link>
-              <form action={signout}>
-                <button className={pill}>Sign out</button>
-              </form>
-            </>
+
+              {/* Dropdown — the pt-2 keeps hover alive across the gap */}
+              <div className="invisible absolute right-0 top-full z-30 w-48 pt-2 opacity-0 transition group-hover:visible group-hover:opacity-100">
+                <div className="overflow-hidden rounded-lg border border-stone-200 bg-white py-1 shadow-card">
+                  {username && (
+                    <Link href={`/u/${username}`} className={item}>
+                      View profile
+                    </Link>
+                  )}
+                  <Link href="/messages" className={`flex items-center justify-between ${item}`}>
+                    Inbox
+                    {unread > 0 && (
+                      <span className="rounded-full bg-brand px-2 py-0.5 text-[11px] font-medium text-white">
+                        {unread}
+                      </span>
+                    )}
+                  </Link>
+                  <Link href="/search" className={item}>
+                    Search
+                  </Link>
+                  <Link href="/settings" className={item}>
+                    Settings
+                  </Link>
+                  <form action={signout}>
+                    <button className={`w-full text-left ${item}`}>Sign out</button>
+                  </form>
+                </div>
+              </div>
+            </div>
           ) : (
-            <Link
-              href="/login"
-              className="rounded-full bg-brand px-4 py-1.5 font-medium text-white transition hover:bg-brand-dark"
-            >
-              Log in
-            </Link>
+            <>
+              <Link
+                href="/search"
+                className="rounded-full px-3 py-1.5 text-slate-600 transition hover:bg-brand-soft hover:text-brand"
+              >
+                Search
+              </Link>
+              <Link
+                href="/login"
+                className="rounded-full bg-brand px-4 py-1.5 font-medium text-white transition hover:bg-brand-dark"
+              >
+                Log in
+              </Link>
+            </>
           )}
         </div>
       </nav>
