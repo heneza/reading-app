@@ -44,6 +44,10 @@ export async function POST(req: Request) {
   if (!user) {
     return NextResponse.json({ error: 'Please log in to use the assistant.' }, { status: 401 });
   }
+  const { data: prof } = await supabase.from('profiles').select('ai_enabled').eq('id', user.id).maybeSingle();
+  if (prof?.ai_enabled === false) {
+    return NextResponse.json({ error: 'The assistant is turned off in your settings.' }, { status: 403 });
+  }
   if (!process.env.GEMINI_API_KEY) {
     return NextResponse.json({ error: 'The assistant is not configured yet.' }, { status: 503 });
   }

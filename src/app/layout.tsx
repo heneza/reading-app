@@ -29,6 +29,7 @@ export default async function RootLayout({
   const { data: { user } } = await supabase.auth.getUser();
 
   let friends: { id: string; username: string }[] = [];
+  let aiEnabled = true;
   if (user) {
     const [{ data: outRows }, { data: inRows }] = await Promise.all([
       supabase.from('follows').select('followee_id').eq('follower_id', user.id),
@@ -40,13 +41,15 @@ export default async function RootLayout({
       const { data: profs } = await supabase.from('profiles').select('id, username').in('id', friendIds);
       friends = (profs ?? []).map((p: any) => ({ id: p.id, username: p.username }));
     }
+    const { data: meProf } = await supabase.from('profiles').select('ai_enabled').eq('id', user.id).maybeSingle();
+    aiEnabled = meProf?.ai_enabled !== false;
   }
   return (
     <html lang="en" className={bodyFont.variable}>
       <body className="font-sans">
         <Nav />
         <main className="mx-auto max-w-[880px] px-5 py-8">{children}</main>
-        {user && <Assistant />}
+        {user && aiEnabled && <Assistant />}
         {user && <RealtimeNotifications meId={user.id} friends={friends} />}
       </body>
     </html>

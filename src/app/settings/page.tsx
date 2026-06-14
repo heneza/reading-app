@@ -3,6 +3,8 @@ import { redirect } from 'next/navigation';
 import { createClient } from '@/utils/supabase/server';
 import { signout } from '@/app/login/actions';
 import { setVisibility } from '@/app/actions/profile';
+import { setAiEnabled } from '@/app/actions/account';
+import DeleteAccount from './DeleteAccount';
 import { timeAgo } from '@/lib/time';
 import ReadReceiptsToggle from './ReadReceiptsToggle';
 
@@ -24,7 +26,7 @@ export default async function SettingsPage() {
 
   const { data: profile } = await supabase
     .from('profiles')
-    .select('username, display_name, read_receipts, likes_visibility, comments_visibility')
+    .select('username, display_name, read_receipts, likes_visibility, comments_visibility, ai_enabled')
     .eq('id', user.id)
     .maybeSingle();
 
@@ -209,6 +211,37 @@ export default async function SettingsPage() {
               Sign out
             </button>
           </form>
+        </div>
+      </section>
+
+      {/* AI assistant */}
+      <section>
+        <h2 className={sectionH}>AI assistant</h2>
+        <div className="rounded-lg border border-stone-200 bg-white p-4 text-sm text-stone-600">
+          <p className="mb-3">The reading assistant shares your favourite genres and recent reads with Google (Gemini) to answer questions and suggest books. You can turn it off completely.</p>
+          <form action={setAiEnabled} className="flex items-center justify-between gap-3">
+            <span className="font-medium text-stone-700">Assistant</span>
+            <span className="flex items-center gap-2">
+              <select name="ai_enabled" defaultValue={profile?.ai_enabled === false ? 'off' : 'on'} className="rounded border border-slate-300 px-2 py-1">
+                <option value="on">On</option>
+                <option value="off">Off</option>
+              </select>
+              <button className="rounded bg-brand px-3 py-1.5 text-sm font-medium text-white hover:bg-brand-dark">Save</button>
+            </span>
+          </form>
+        </div>
+      </section>
+
+      {/* Data & account */}
+      <section>
+        <h2 className={sectionH}>Data &amp; account</h2>
+        <div className="space-y-3 rounded-lg border border-stone-200 bg-white p-4 text-sm text-stone-600">
+          <p>Download a copy of everything you have created on Reading App.</p>
+          <a href="/api/export" className="inline-block rounded border border-stone-300 px-4 py-2 text-sm font-medium text-stone-700 hover:bg-stone-100">Export my data (JSON)</a>
+          <div className="border-t border-stone-100 pt-3">
+            <p className="mb-2 text-stone-500">Deleting your account permanently removes your profile, shelves, reviews, posts, lists, messages and goals. This cannot be undone.</p>
+            <DeleteAccount />
+          </div>
         </div>
       </section>
 
