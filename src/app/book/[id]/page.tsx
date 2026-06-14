@@ -181,18 +181,18 @@ export default async function BookPage({ params }: { params: { id: string } }) {
                 mine={mine}
               >
                 {/* like / dislike */}
-                <div className="mt-3 flex items-center gap-3 text-sm">
+                <div className="mt-3 flex items-center justify-end gap-2 text-sm">
                   <form action={reactToReview}>
                     <input type="hidden" name="bookId" value={book.id} />
                     <input type="hidden" name="reviewId" value={rev.id} />
                     <input type="hidden" name="type" value="like" />
-                    <button className={`rounded-full border px-3 py-1 ${myReaction === 'like' ? 'border-brand bg-brand text-white' : 'border-slate-300 text-slate-600 hover:bg-slate-100'}`}>👍 {likers.length}</button>
+                    <button className={`rounded-full border px-3 py-1 ${myReaction === 'like' ? 'border-brand bg-brand text-white' : 'border-slate-300 text-slate-600 hover:bg-slate-100'}`}>Like {likers.length}</button>
                   </form>
                   <form action={reactToReview}>
                     <input type="hidden" name="bookId" value={book.id} />
                     <input type="hidden" name="reviewId" value={rev.id} />
                     <input type="hidden" name="type" value="dislike" />
-                    <button className={`rounded-full border px-3 py-1 ${myReaction === 'dislike' ? 'border-slate-700 bg-slate-700 text-white' : 'border-slate-300 text-slate-600 hover:bg-slate-100'}`}>👎 {dislikers.length}</button>
+                    <button className={`rounded-full border px-3 py-1 ${myReaction === 'dislike' ? 'border-slate-700 bg-slate-700 text-white' : 'border-slate-300 text-slate-600 hover:bg-slate-100'}`}>Dislike {dislikers.length}</button>
                   </form>
                 </div>
 

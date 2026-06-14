@@ -111,14 +111,14 @@ export default function ReviewItem({
         </div>
 
         {mine && !editing && (
-          <div className="flex flex-shrink-0 items-center gap-2 text-slate-400">
-            <button type="button" onClick={() => setEditing(true)} title="Edit review" className="hover:text-brand">
-              <PencilIcon />
-            </button>
-            <button type="button" onClick={handleDelete} disabled={pending} title="Delete review" className="hover:text-red-600 disabled:opacity-40">
-              <TrashIcon />
-            </button>
-          </div>
+          <button
+            type="button"
+            onClick={() => setEditing(true)}
+            title="Edit review"
+            className="flex-shrink-0 text-slate-400 hover:text-brand"
+          >
+            <PencilIcon />
+          </button>
         )}
       </div>
 
@@ -140,6 +140,9 @@ export default function ReviewItem({
               Contains spoilers
             </label>
             <div className="flex gap-2">
+              <button type="button" onClick={handleDelete} disabled={pending} className="flex items-center gap-1 rounded border border-red-200 px-3 py-1 text-sm text-red-600 hover:bg-red-50 disabled:opacity-50">
+                <TrashIcon /> Delete
+              </button>
               <button type="button" onClick={cancelEdit} disabled={pending} className="rounded border border-slate-300 px-3 py-1 text-sm text-slate-600 hover:bg-slate-100 disabled:opacity-50">
                 Cancel
               </button>
