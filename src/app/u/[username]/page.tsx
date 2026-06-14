@@ -269,23 +269,14 @@ export default async function ProfilePage({
   const tabHref = (t: string) => `/u/${profile.username}?tab=${t}`;
   const TAB_LABEL: Record<string, string> = { posts: 'Posts', likes: 'Likes', replies: 'Replies', reviews: 'Reviews', diary: 'Diary' };
 
-  // Header stat blocks (Letterboxd-style: big number + small label).
-  const stats: { label: string; value: number; href: string }[] = [
-    { label: 'Books', value: list.length, href: `/u/${profile.username}?tab=shelf` },
-    { label: 'This year', value: thisYearCount ?? 0, href: `/u/${profile.username}?tab=diary` },
-    { label: 'Friends', value: friendCount, href: connHref('friends') },
-    { label: 'Following', value: followingSet.size, href: connHref('following') },
-    { label: 'Followers', value: followerIds.length, href: connHref('followers') },
-  ];
-
   return (
     <div>
-      {/* --- Profile header (Letterboxd-style: avatar + name/actions left, stats right) --- */}
-      <div className="flex items-start gap-4">
+      {/* --- Profile header --- */}
+      <div className="flex items-start gap-5">
         <Avatar src={profile.avatar_url} name={profile.display_name ?? profile.username} size={72} />
         <div className="min-w-0 flex-1">
-          <div className="flex flex-wrap items-start justify-between gap-x-8 gap-y-4">
-            {/* Name + actions */}
+          <div className="flex items-start justify-between gap-6">
+            {/* Left: name, username, counts, bio */}
             <div className="min-w-0">
               <div className="flex items-center gap-2">
                 <h1 className="truncate text-2xl font-bold tracking-tight text-stone-900">{profile.display_name ?? profile.username}</h1>
@@ -298,6 +289,16 @@ export default async function ProfilePage({
                 <ShareButton username={profile.username} />
               </div>
               <p className="text-sm text-stone-400">@{profile.username}</p>
+
+              <p className="mt-1 flex flex-wrap gap-x-3 text-sm text-slate-500">
+                <Link href={connHref('followers')} className="hover:text-brand"><span className="font-medium text-slate-700">{followerIds.length}</span> followers</Link>
+                <Link href={connHref('following')} className="hover:text-brand"><span className="font-medium text-slate-700">{followingSet.size}</span> following</Link>
+                <Link href={connHref('friends')} className="hover:text-brand"><span className="font-medium text-slate-700">{friendCount}</span> friends</Link>
+                <Link href={`/u/${profile.username}?tab=shelf`} className="hover:text-brand"><span className="font-medium text-slate-700">{list.length}</span> book{list.length === 1 ? '' : 's'}</Link>
+              </p>
+
+              {profile.bio && <p className="mt-2 whitespace-pre-wrap text-slate-700">{linkifyMentions(profile.bio, validMentions)}</p>}
+
               {!isOwnProfile && user && (
                 <div className="mt-3 flex items-center gap-2">
                   <Link href={`/messages/${profile.username}`} title="Message" aria-label="Message"
@@ -313,17 +314,19 @@ export default async function ProfilePage({
               )}
             </div>
 
-            {/* Stats + public goal bars */}
+            {/* Right: socials above the reading bars */}
             <div className="flex flex-shrink-0 flex-col items-end gap-3">
-              <div className="flex flex-wrap justify-end">
-                {stats.map((st, idx) => (
-                  <Link key={st.label} href={st.href}
-                    className={`group px-4 text-center ${idx > 0 ? 'border-l border-stone-200' : ''}`}>
-                    <div className="text-lg font-bold leading-none text-stone-800 transition group-hover:text-brand">{st.value.toLocaleString()}</div>
-                    <div className="mt-1 text-[10px] font-semibold uppercase tracking-wider text-stone-400 transition group-hover:text-brand">{st.label}</div>
-                  </Link>
-                ))}
-              </div>
+              {(profile.website || profile.instagram || profile.twitter) && (
+                <p className="flex flex-wrap items-center justify-end gap-3 text-sm">
+                  {profile.website && <a href={profile.website} target="_blank" rel="noopener noreferrer" className="text-brand hover:underline">Website</a>}
+                  {profile.instagram && (
+                    <a href={`https://instagram.com/${profile.instagram}`} target="_blank" rel="noopener noreferrer" aria-label="Instagram" className="text-brand hover:opacity-70"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><rect x="2" y="2" width="20" height="20" rx="5" /><circle cx="12" cy="12" r="4" /><circle cx="17.5" cy="6.5" r="1.2" fill="currentColor" stroke="none" /></svg></a>
+                  )}
+                  {profile.twitter && (
+                    <a href={`https://x.com/${profile.twitter}`} target="_blank" rel="noopener noreferrer" aria-label="X" className="text-brand hover:opacity-70"><svg width="16" height="16" viewBox="0 0 24 24" fill="currentColor"><path d="M18.244 2.25h3.308l-7.227 8.26 8.502 11.24h-6.66l-5.214-6.817L4.99 21.75H1.68l7.73-8.835L1.254 2.25H8.08l4.713 6.231zm-1.161 17.52h1.833L7.084 4.126H5.117z" /></svg></a>
+                  )}
+                </p>
+              )}
 
               {(booksGoal > 0 || hoursGoal > 0) ? (
                 <div className="w-full max-w-[18rem] space-y-2.5 rounded-xl border border-stone-200/80 bg-white/70 p-3.5">
@@ -354,31 +357,15 @@ export default async function ProfilePage({
               ) : null}
             </div>
           </div>
-
-          {/* Bio + social + genres */}
-          {profile.bio && <p className="mt-3 whitespace-pre-wrap text-slate-700">{linkifyMentions(profile.bio, validMentions)}</p>}
-          {(profile.website || profile.instagram || profile.twitter) && (
-            <p className="mt-2 flex flex-wrap items-center gap-3 text-sm">
-              {profile.website && <a href={profile.website} target="_blank" rel="noopener noreferrer" className="text-brand hover:underline">Website</a>}
-              {profile.instagram && (
-                <a href={`https://instagram.com/${profile.instagram}`} target="_blank" rel="noopener noreferrer" aria-label="Instagram" className="text-brand hover:opacity-70">
-                  <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><rect x="2" y="2" width="20" height="20" rx="5" /><circle cx="12" cy="12" r="4" /><circle cx="17.5" cy="6.5" r="1.2" fill="currentColor" stroke="none" /></svg>
-                </a>
-              )}
-              {profile.twitter && (
-                <a href={`https://x.com/${profile.twitter}`} target="_blank" rel="noopener noreferrer" aria-label="X" className="text-brand hover:opacity-70">
-                  <svg width="16" height="16" viewBox="0 0 24 24" fill="currentColor"><path d="M18.244 2.25h3.308l-7.227 8.26 8.502 11.24h-6.66l-5.214-6.817L4.99 21.75H1.68l7.73-8.835L1.254 2.25H8.08l4.713 6.231zm-1.161 17.52h1.833L7.084 4.126H5.117z" /></svg>
-                </a>
-              )}
-            </p>
-          )}
-          {favGenres.length > 0 && (
-            <div className="mt-3 flex flex-wrap gap-2">
-              {favGenres.map((slug: string) => <span key={slug} className="rounded-full bg-brand-soft px-3 py-1 text-xs font-medium text-brand">{genreName(slug)}</span>)}
-            </div>
-          )}
         </div>
       </div>
+
+      {/* Genres — full width, aligned to the far left under the avatar */}
+      {favGenres.length > 0 && (
+        <div className="mt-4 flex flex-wrap gap-2">
+          {favGenres.map((slug: string) => <span key={slug} className="rounded-full bg-brand-soft px-3 py-1 text-xs font-medium text-brand">{genreName(slug)}</span>)}
+        </div>
+      )}
 
       {/* --- Favourites + Shelf (same line) --- */}
       <div className="mt-8 flex flex-col gap-6 sm:flex-row sm:items-start">
