@@ -25,10 +25,12 @@ export default function LoginPage({
 
       <form className="space-y-3">
         <input
-          name="email"
-          type="email"
+          name="identifier"
+          type="text"
           required
-          placeholder="you@example.com"
+          autoCapitalize="none"
+          autoCorrect="off"
+          placeholder="Email or username"
           className="w-full rounded border border-slate-300 px-3 py-2"
         />
         <input
@@ -53,8 +55,7 @@ export default function LoginPage({
             />
           </div>
           <p className="mt-1 text-xs text-slate-400">
-            3–20 characters · letters, numbers, periods, underscores. Only needed
-            to sign up.
+            3–20 characters · letters, numbers, periods, underscores. To sign up, put your email above and pick a username here.
           </p>
         </div>
         <div className="flex gap-3 pt-1">

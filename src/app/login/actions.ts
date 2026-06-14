@@ -7,13 +7,23 @@ import { normalizeUsername, validateUsername } from '@/lib/username';
 
 export async function login(formData: FormData) {
   const supabase = createClient();
-  const { error } = await supabase.auth.signInWithPassword({
-    email: String(formData.get('email')),
-    password: String(formData.get('password')),
-  });
+  const identifier = String(formData.get('identifier') ?? formData.get('email') ?? '').trim();
+  const password = String(formData.get('password') ?? '');
 
-  if (error) {
-    redirect('/login?error=' + encodeURIComponent(error.message));
+  // If they typed a username (no "@"), resolve it to the account email.
+  let email = identifier;
+  if (identifier && !identifier.includes('@')) {
+    const { data } = await supabase.rpc('email_for_username', { uname: identifier });
+    email = typeof data === 'string' ? data : '';
+  }
+
+  const { error } = email
+    ? await supabase.auth.signInWithPassword({ email, password })
+    : { error: { message: 'no-account' } as { message: string } };
+
+  if (!email || error) {
+    // One generic message for every failure (no account enumeration).
+    redirect('/login?error=' + encodeURIComponent('Invalid login — check your email/username and password.'));
   }
   revalidatePath('/', 'layout');
   redirect('/');
@@ -21,8 +31,12 @@ export async function login(formData: FormData) {
 
 export async function signup(formData: FormData) {
   const supabase = createClient();
-  const email = String(formData.get('email'));
+  const email = String(formData.get('identifier') ?? formData.get('email') ?? '').trim();
   const password = String(formData.get('password'));
+
+  if (!/^[^@\s]+@[^@\s]+\.[^@\s]+$/.test(email)) {
+    redirect('/login?error=' + encodeURIComponent('Enter a valid email address to sign up.'));
+  }
   const username = normalizeUsername(String(formData.get('username') ?? ''));
 
   // Validate the chosen username.
