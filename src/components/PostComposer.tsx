@@ -5,11 +5,13 @@ import { useRouter } from 'next/navigation';
 import { createPost } from '@/app/actions/posts';
 
 const MAX_SHORT = 280;
+const COLORS = [
+  { name: 'Black', value: '#111111' },
+  { name: 'Red', value: '#8a1730' },
+];
 
 export default function PostComposer() {
   const editorRef = useRef<HTMLDivElement | null>(null);
-  const colorInputRef = useRef<HTMLInputElement | null>(null);
-  const [color, setColor] = useState('#111111');
   const [count, setCount] = useState(0);
   const [tags, setTags] = useState<string[]>([]);
   const [tagDraft, setTagDraft] = useState('');
@@ -113,28 +115,18 @@ export default function PostComposer() {
 
         <span className="mx-1 h-4 w-px bg-stone-200" />
 
-        {/* Single colour swatch: click applies, right-click picks a colour */}
-        <button
-          type="button"
-          onMouseDown={hold}
-          onClick={() => exec('foreColor', color)}
-          onContextMenu={(e) => {
-            e.preventDefault();
-            colorInputRef.current?.click();
-          }}
-          title="Click to apply colour · right-click to pick a colour"
-          className="h-5 w-5 rounded-full border border-stone-300"
-          style={{ backgroundColor: color }}
-        />
-        <input
-          ref={colorInputRef}
-          type="color"
-          value={color}
-          onChange={(e) => setColor(e.target.value)}
-          tabIndex={-1}
-          aria-hidden
-          className="pointer-events-none absolute h-0 w-0 opacity-0"
-        />
+        {/* Two text colours: black and the site red */}
+        {COLORS.map((c) => (
+          <button
+            key={c.value}
+            type="button"
+            onMouseDown={hold}
+            onClick={() => exec('foreColor', c.value)}
+            title={`${c.name} text`}
+            className="h-5 w-5 rounded-full border border-stone-300"
+            style={{ backgroundColor: c.value }}
+          />
+        ))}
 
         <span className="mx-1 h-4 w-px bg-stone-200" />
 
