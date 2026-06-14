@@ -287,62 +287,70 @@ export default async function ProfilePage({
           <div className="flex flex-wrap items-start justify-between gap-x-8 gap-y-4">
             {/* Name + actions */}
             <div className="min-w-0">
-              <h1 className="text-2xl font-bold">{profile.display_name ?? profile.username}</h1>
-              <p className="text-sm text-slate-500">@{profile.username}</p>
-              <div className="mt-2 flex flex-wrap items-center gap-2">
+              <div className="flex items-center gap-2">
+                <h1 className="truncate text-2xl font-bold tracking-tight text-stone-900">{profile.display_name ?? profile.username}</h1>
+                {isOwnProfile && (
+                  <Link href="/settings/profile" title="Edit profile" aria-label="Edit profile"
+                    className="inline-flex h-8 w-8 flex-shrink-0 items-center justify-center rounded-full text-stone-400 transition hover:bg-brand-soft hover:text-brand">
+                    <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M12 20h9" /><path d="M16.5 3.5a2.121 2.121 0 0 1 3 3L7 19l-4 1 1-4 9.5-12.5z" /></svg>
+                  </Link>
+                )}
                 <ShareButton username={profile.username} />
-                {isOwnProfile ? (
-                  <Link href="/settings/profile" className="whitespace-nowrap rounded-full border border-slate-300 px-4 py-1.5 text-sm font-medium text-slate-700 hover:bg-slate-100">Edit profile</Link>
-                ) : user ? (
-                  <>
-                    <Link href={`/messages/${profile.username}`} className="whitespace-nowrap rounded-full border border-slate-300 px-4 py-1.5 text-sm font-medium text-slate-700 hover:bg-slate-100">Message</Link>
-                    <form action={isFollowing ? unfollowUser : followUser}>
-                      <input type="hidden" name="followeeId" value={profile.id} />
-                      <input type="hidden" name="username" value={profile.username} />
-                      <button className={isFollowing ? 'rounded-full border border-slate-300 px-4 py-1.5 text-sm font-medium text-slate-700 hover:bg-slate-100' : 'rounded-full bg-brand px-4 py-1.5 text-sm font-medium text-white hover:opacity-90'}>{isFollowing ? 'Following' : 'Follow'}</button>
-                    </form>
-                  </>
-                ) : null}
               </div>
+              <p className="text-sm text-stone-400">@{profile.username}</p>
+              {!isOwnProfile && user && (
+                <div className="mt-3 flex items-center gap-2">
+                  <Link href={`/messages/${profile.username}`} title="Message" aria-label="Message"
+                    className="inline-flex h-9 w-9 items-center justify-center rounded-full border border-stone-300 text-stone-600 transition hover:border-brand hover:text-brand">
+                    <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z" /></svg>
+                  </Link>
+                  <form action={isFollowing ? unfollowUser : followUser}>
+                    <input type="hidden" name="followeeId" value={profile.id} />
+                    <input type="hidden" name="username" value={profile.username} />
+                    <button className={isFollowing ? 'rounded-full border border-stone-300 px-5 py-1.5 text-sm font-medium text-stone-700 transition hover:bg-stone-50' : 'rounded-full bg-brand px-5 py-1.5 text-sm font-medium text-white transition hover:opacity-90'}>{isFollowing ? 'Following' : 'Follow'}</button>
+                  </form>
+                </div>
+              )}
             </div>
 
-            {/* Stat blocks + public goal bars */}
-            <div className="flex flex-shrink-0 flex-col gap-3">
-              <div className="flex flex-wrap items-start justify-end gap-x-6 gap-y-3">
-                {stats.map((st) => (
-                  <Link key={st.label} href={st.href} className="group text-center">
-                    <div className="text-xl font-bold leading-tight text-slate-800 group-hover:text-brand">{st.value.toLocaleString()}</div>
-                    <div className="text-[11px] font-medium uppercase tracking-wide text-slate-400 group-hover:text-brand">{st.label}</div>
+            {/* Stats + public goal bars */}
+            <div className="flex flex-shrink-0 flex-col items-end gap-3">
+              <div className="flex flex-wrap justify-end">
+                {stats.map((st, idx) => (
+                  <Link key={st.label} href={st.href}
+                    className={`group px-4 text-center ${idx > 0 ? 'border-l border-stone-200' : ''}`}>
+                    <div className="text-lg font-bold leading-none text-stone-800 transition group-hover:text-brand">{st.value.toLocaleString()}</div>
+                    <div className="mt-1 text-[10px] font-semibold uppercase tracking-wider text-stone-400 transition group-hover:text-brand">{st.label}</div>
                   </Link>
                 ))}
               </div>
 
               {(booksGoal > 0 || hoursGoal > 0) ? (
-                <div className="space-y-1.5 sm:min-w-[260px]">
+                <div className="w-full max-w-[18rem] space-y-2.5 rounded-xl border border-stone-200/80 bg-white/70 p-3.5">
                   <div>
-                    <div className="mb-0.5 flex items-center justify-between text-xs text-stone-500">
-                      <span>Books this year</span>
-                      <span className="font-medium text-stone-700">{booksThisYear}{booksGoal > 0 ? ` / ${booksGoal}` : ''}</span>
+                    <div className="mb-1 flex items-baseline justify-between">
+                      <span className="text-xs font-medium text-stone-500">Books this year</span>
+                      <span className="text-xs font-semibold text-stone-700">{booksThisYear}<span className="text-stone-400"> / {booksGoal > 0 ? booksGoal : '—'}</span></span>
                     </div>
-                    <div className="h-2 w-full overflow-hidden rounded-full bg-brand-soft">
-                      <div className="h-full rounded-full bg-brand" style={{ width: `${pctBooks}%` }} />
+                    <div className="h-1.5 w-full overflow-hidden rounded-full bg-stone-200/80">
+                      <div className="h-full rounded-full bg-brand transition-all" style={{ width: `${pctBooks}%` }} />
                     </div>
                   </div>
                   <div>
-                    <div className="mb-0.5 flex items-center justify-between text-xs text-stone-500">
-                      <span>Hours this year</span>
-                      <span className="font-medium text-stone-700">{hoursThisYear.toFixed(1)}{hoursGoal > 0 ? ` / ${hoursGoal}` : ''}</span>
+                    <div className="mb-1 flex items-baseline justify-between">
+                      <span className="text-xs font-medium text-stone-500">Hours this year</span>
+                      <span className="text-xs font-semibold text-stone-700">{hoursThisYear.toFixed(1)}<span className="text-stone-400"> / {hoursGoal > 0 ? hoursGoal : '—'}</span></span>
                     </div>
-                    <div className="h-2 w-full overflow-hidden rounded-full bg-brand-soft">
-                      <div className="h-full rounded-full bg-brand" style={{ width: `${pctHours}%` }} />
+                    <div className="h-1.5 w-full overflow-hidden rounded-full bg-stone-200/80">
+                      <div className="h-full rounded-full bg-brand transition-all" style={{ width: `${pctHours}%` }} />
                     </div>
                   </div>
                   {isOwnProfile && (
-                    <Link href="/goals" className="inline-block text-xs text-brand hover:underline">Manage goals →</Link>
+                    <Link href="/goals" className="flex items-center justify-end gap-1 pt-0.5 text-xs font-medium text-brand hover:underline">Manage goals →</Link>
                   )}
                 </div>
               ) : isOwnProfile ? (
-                <Link href="/goals" className="text-right text-xs text-brand hover:underline">Set reading goals →</Link>
+                <Link href="/goals" className="rounded-full border border-dashed border-stone-300 px-4 py-1.5 text-xs font-medium text-stone-500 transition hover:border-brand hover:text-brand">+ Set reading goals</Link>
               ) : null}
             </div>
           </div>
