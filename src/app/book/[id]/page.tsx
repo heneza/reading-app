@@ -11,10 +11,11 @@ import {
 import ReviewForm from './ReviewForm';
 import ReviewItem from './ReviewItem';
 import { removeFromShelf } from '@/app/actions/shelf';
+import { logRead, deleteDiaryEntry } from '@/app/actions/diary';
 import { classifyBook } from '@/app/actions/genres';
 import { genreName } from '@/lib/genres';
 import StarRating from '@/components/StarRating';
-import { timeAgo } from '@/lib/time';
+import { timeAgo, formatDate } from '@/lib/time';
 
 // Always render fresh (no caching) so data and login state are current.
 export const dynamic = 'force-dynamic';
@@ -28,6 +29,7 @@ export default async function BookPage({ params }: { params: { id: string } }) {
   if (!book) notFound();
 
   const description = await fetchDescription(book.ol_key);
+  const today = new Date().toISOString().slice(0, 10);
 
   let myRating: number | null = null;
   let onShelf = false;
@@ -37,6 +39,19 @@ export default async function BookPage({ params }: { params: { id: string } }) {
       .eq('user_id', user.id).eq('book_id', book.id).maybeSingle();
     myRating = entry?.rating ?? null;
     onShelf = !!entry;
+  }
+
+  // This user's diary entries for this book (most recent read first).
+  let myDiary: any[] = [];
+  if (user) {
+    const { data: de } = await supabase
+      .from('diary_entries')
+      .select('id, read_on, rating, note, is_reread')
+      .eq('user_id', user.id)
+      .eq('book_id', book.id)
+      .order('read_on', { ascending: false })
+      .order('created_at', { ascending: false });
+    myDiary = de ?? [];
   }
 
   // Genres for this book — classify on first view if not done yet.
@@ -136,6 +151,59 @@ export default async function BookPage({ params }: { params: { id: string } }) {
           )}
         </div>
       </div>
+
+      {/* --- Reading diary --- */}
+      {user && (
+        <section className="mt-8">
+          <h2 className="mb-2 text-lg font-semibold">Reading diary</h2>
+          <p className="mb-3 text-sm text-slate-500">
+            {myDiary.length === 0
+              ? 'Log each time you read this book.'
+              : `You've read this ${myDiary.length} time${myDiary.length === 1 ? '' : 's'}.`}
+          </p>
+
+          {/* Log a read */}
+          <form action={logRead} className="mb-4 flex flex-wrap items-end gap-3 rounded-lg border border-stone-200 bg-white p-3">
+            <input type="hidden" name="bookId" value={book.id} />
+            <label className="flex flex-col text-xs text-slate-500">
+              Date read
+              <input type="date" name="readOn" defaultValue={today} max={today} className="mt-1 rounded border border-slate-300 px-2 py-1 text-sm text-slate-700" />
+            </label>
+            <label className="flex flex-col text-xs text-slate-500">
+              Rating (optional)
+              <input type="number" name="rating" min="0" max="5" step="0.25" placeholder="—" className="mt-1 w-24 rounded border border-slate-300 px-2 py-1 text-sm text-slate-700" />
+            </label>
+            <label className="flex flex-1 flex-col text-xs text-slate-500">
+              Note (optional)
+              <input name="note" maxLength={280} placeholder="A line about this read…" className="mt-1 rounded border border-slate-300 px-2 py-1 text-sm text-slate-700" />
+            </label>
+            <button className="rounded-full bg-brand px-4 py-1.5 text-sm font-medium text-white hover:opacity-90">Log read</button>
+          </form>
+
+          {/* Past reads */}
+          {myDiary.length > 0 && (
+            <ul className="space-y-2">
+              {myDiary.map((d: any) => (
+                <li key={d.id} className="flex items-start justify-between gap-3 rounded-lg border border-stone-200 bg-white p-3 text-sm">
+                  <div className="min-w-0">
+                    <p className="font-medium text-slate-700">
+                      {formatDate(d.read_on)}
+                      {d.is_reread && <span title="Reread" className="ml-2 text-brand">↻ reread</span>}
+                      {d.rating != null && <span className="ml-2 text-stone-500">{Number(d.rating)}★</span>}
+                    </p>
+                    {d.note && <p className="mt-1 whitespace-pre-wrap text-slate-600">{d.note}</p>}
+                  </div>
+                  <form action={deleteDiaryEntry}>
+                    <input type="hidden" name="entryId" value={d.id} />
+                    <input type="hidden" name="bookId" value={book.id} />
+                    <button title="Delete entry" className="text-stone-300 hover:text-red-600">×</button>
+                  </form>
+                </li>
+              ))}
+            </ul>
+          )}
+        </section>
+      )}
 
       {/* --- Write a review --- */}
       {user && (

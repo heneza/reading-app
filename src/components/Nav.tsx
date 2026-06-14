@@ -111,9 +111,6 @@ export default async function Nav() {
                       </span>
                     )}
                   </Link>
-                  <Link href="/search" className={item}>
-                    Search
-                  </Link>
                   <Link href="/settings" className={item}>
                     Settings
                   </Link>

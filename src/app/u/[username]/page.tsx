@@ -5,7 +5,7 @@ import { createClient } from '@/utils/supabase/server';
 import { coverUrl } from '@/lib/openlibrary';
 import { followUser, unfollowUser } from '@/app/actions/follows';
 import { genreName } from '@/lib/genres';
-import { timeAgo } from '@/lib/time';
+import { timeAgo, formatDate } from '@/lib/time';
 import Avatar from '@/components/Avatar';
 import ShareButton from '@/components/ShareButton';
 import PostComposer from '@/components/PostComposer';
@@ -38,9 +38,9 @@ const STATUS_LABEL: Record<string, string> = {
   dnf: 'Did not finish',
 };
 const STATUS_ORDER = ['reading', 'want_to_read', 'read', 'dnf'];
-const TAB_BAR = ['posts', 'likes', 'replies', 'reviews'] as const;
-const ALL_TABS = ['posts', 'likes', 'replies', 'reviews', 'shelf'];
-type Tab = 'posts' | 'likes' | 'replies' | 'reviews' | 'shelf';
+const TAB_BAR = ['posts', 'likes', 'replies', 'reviews', 'diary'] as const;
+const ALL_TABS = ['posts', 'likes', 'replies', 'reviews', 'diary', 'shelf'];
+type Tab = 'posts' | 'likes' | 'replies' | 'reviews' | 'diary' | 'shelf';
 
 export const dynamic = 'force-dynamic';
 
@@ -127,6 +127,7 @@ export default async function ProfilePage({
   let replyItems: any[] = [];
   let replyOwner = new Map<string, string>();
   let reviews: any[] = [];
+  let diary: any[] = [];
 
   if (tab === 'posts') {
     const { data: op } = await supabase.from('posts').select('*').eq('user_id', profile.id).order('created_at', { ascending: false }).limit(30);
@@ -168,12 +169,21 @@ export default async function ProfilePage({
   } else if (tab === 'reviews') {
     const { data: rv } = await supabase.from('reviews').select('id, body, book_id, created_at, books ( title )').eq('user_id', profile.id).order('created_at', { ascending: false }).limit(30);
     reviews = rv ?? [];
+  } else if (tab === 'diary') {
+    const { data: dv } = await supabase
+      .from('diary_entries')
+      .select('id, read_on, rating, note, is_reread, book_id, books ( title, author, cover_id )')
+      .eq('user_id', profile.id)
+      .order('read_on', { ascending: false })
+      .order('created_at', { ascending: false })
+      .limit(60);
+    diary = dv ?? [];
   }
 
   const grouped = STATUS_ORDER.map((status) => ({ status, items: list.filter((e: any) => e.status === status) })).filter((g) => g.items.length > 0);
   const connHref = (t: string) => `/u/${profile.username}/connections?type=${t}`;
   const tabHref = (t: string) => `/u/${profile.username}?tab=${t}`;
-  const TAB_LABEL: Record<string, string> = { posts: 'Posts', likes: 'Likes', replies: 'Replies', reviews: 'Reviews' };
+  const TAB_LABEL: Record<string, string> = { posts: 'Posts', likes: 'Likes', replies: 'Replies', reviews: 'Reviews', diary: 'Diary' };
 
   return (
     <div>
@@ -379,6 +389,37 @@ export default async function ProfilePage({
                       <p className="whitespace-pre-wrap text-sm text-stone-700">{r.body.length > 240 ? r.body.slice(0, 240) + '…' : r.body}</p>
                     </li>
                   ))}
+                </ul>
+              )
+            )}
+
+            {/* DIARY */}
+            {tab === 'diary' && (
+              diary.length === 0 ? (
+                <p className="text-sm text-stone-500">No diary entries yet.</p>
+              ) : (
+                <ul className="space-y-2">
+                  {diary.map((d: any) => {
+                    const src = coverUrl(d.books?.cover_id, 'S');
+                    return (
+                      <li key={d.id} className="flex items-center gap-3 rounded-lg border border-stone-200 bg-white p-3">
+                        <Link href={`/book/${d.book_id}`} className="flex-shrink-0">
+                          <div className="h-16 w-11 overflow-hidden rounded bg-slate-100">
+                            {src && <Image src={src} alt={d.books?.title ?? ''} width={44} height={64} className="h-full w-full object-cover" />}
+                          </div>
+                        </Link>
+                        <div className="min-w-0 flex-1">
+                          <Link href={`/book/${d.book_id}`} className="text-sm font-semibold hover:text-brand hover:underline">{d.books?.title}</Link>
+                          <p className="text-xs text-stone-400">
+                            {formatDate(d.read_on)}
+                            {d.is_reread && <span className="ml-2 text-brand">↻ reread</span>}
+                            {d.rating != null && <span className="ml-2 text-stone-500">{Number(d.rating)}★</span>}
+                          </p>
+                          {d.note && <p className="mt-1 whitespace-pre-wrap text-sm text-stone-700">{d.note}</p>}
+                        </div>
+                      </li>
+                    );
+                  })}
                 </ul>
               )
             )}

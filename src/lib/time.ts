@@ -13,3 +13,15 @@ export function timeAgo(iso: string): string {
   if (w < 5) return `${w}w ago`;
   return new Date(iso).toLocaleDateString();
 }
+
+// Format a "YYYY-MM-DD" date (e.g. a diary read_on) as "14 Jun 2026".
+// We build the Date from explicit parts to avoid timezone day-shifting.
+export function formatDate(ymd: string): string {
+  const [y, m, d] = ymd.split('-').map(Number);
+  if (!y || !m || !d) return ymd;
+  return new Date(y, m - 1, d).toLocaleDateString(undefined, {
+    day: 'numeric',
+    month: 'short',
+    year: 'numeric',
+  });
+}
