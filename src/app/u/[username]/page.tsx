@@ -66,91 +66,52 @@ export default async function ProfilePage({
   const tab: Tab = (ALL_TABS.includes(searchParams?.tab ?? '') ? searchParams!.tab : 'posts') as Tab;
   const tagFilter = searchParams?.tag ?? null;
 
-  const { data: entries } = await supabase
-    .from('reading_entries')
-    .select('status, rating, book_id, books ( title, author, cover_id )')
-    .eq('user_id', profile.id)
-    .order('updated_at', { ascending: false });
-  const list = entries ?? [];
-
-  const { data: genreRows } = await supabase.from('profile_genres').select('genre').eq('user_id', profile.id);
-  const favGenres = (genreRows ?? []).map((r: any) => r.genre);
-
   const mentioned = Array.from(
     new Set((profile.bio?.match(/@([a-zA-Z0-9_]+(?:\.[a-zA-Z0-9_]+)*)/g) ?? []).map((t: string) => t.slice(1)))
   );
-  let validMentions = new Set<string>();
-  if (mentioned.length) {
-    const { data: mp } = await supabase.from('profiles').select('username').in('username', mentioned);
-    validMentions = new Set((mp ?? []).map((r: any) => String(r.username).toLowerCase()));
-  }
-
-  const { data: favRows } = await supabase
-    .from('favorite_books')
-    .select('position, book_id, books ( title, author, cover_id )')
-    .eq('user_id', profile.id)
-    .order('position');
-  const favs = favRows ?? [];
-
-  // Recent diary entries for the sidebar preview (newest first).
-  const { data: diaryRows } = await supabase
-    .from('diary_entries')
-    .select('id, read_on, rating, book_id, books ( title, cover_id )')
-    .eq('user_id', profile.id)
-    .order('read_on', { ascending: false })
-    .order('created_at', { ascending: false })
-    .limit(12);
-  const diaryPreview = diaryRows ?? [];
-
-  // Books logged this calendar year (diary entries; rereads count too).
   const yearStart = `${new Date().getFullYear()}-01-01`;
-  const { count: thisYearCount } = await supabase
-    .from('diary_entries')
-    .select('id', { count: 'exact', head: true })
-    .eq('user_id', profile.id)
-    .gte('read_on', yearStart);
-
-  // Reading goals (this year) + logged hours for the goal bars.
   const yearNum = new Date().getFullYear();
-  const { data: goalsRow } = await supabase
-    .from('reading_goals')
-    .select('books_goal, hours_goal')
-    .eq('user_id', profile.id)
-    .eq('year', yearNum)
-    .maybeSingle();
+
+  // All independent of each other — one round-trip instead of a dozen.
+  const [
+    entriesRes, genreRes, mpRes, favRes, diaryRes, thisYearRes,
+    goalsRes, sessionsRes, ownListsRes, likedListsRes, followerRes, followingRes,
+  ] = await Promise.all([
+    supabase.from('reading_entries').select('status, rating, book_id, books ( title, author, cover_id )').eq('user_id', profile.id).order('updated_at', { ascending: false }),
+    supabase.from('profile_genres').select('genre').eq('user_id', profile.id),
+    mentioned.length ? supabase.from('profiles').select('username').in('username', mentioned) : Promise.resolve({ data: [] as any[] }),
+    supabase.from('favorite_books').select('position, book_id, books ( title, author, cover_id )').eq('user_id', profile.id).order('position'),
+    supabase.from('diary_entries').select('id, read_on, rating, book_id, books ( title, cover_id )').eq('user_id', profile.id).order('read_on', { ascending: false }).order('created_at', { ascending: false }).limit(12),
+    supabase.from('diary_entries').select('id', { count: 'exact', head: true }).eq('user_id', profile.id).gte('read_on', yearStart),
+    supabase.from('reading_goals').select('books_goal, hours_goal').eq('user_id', profile.id).eq('year', yearNum).maybeSingle(),
+    supabase.from('reading_sessions').select('hours').eq('user_id', profile.id).gte('created_at', yearStart),
+    supabase.from('lists').select('id, title').eq('owner_id', profile.id).order('created_at', { ascending: false }).limit(10),
+    supabase.from('list_likes').select('lists ( id, title )').eq('user_id', profile.id).limit(10),
+    supabase.from('follows').select('follower_id').eq('followee_id', profile.id),
+    supabase.from('follows').select('followee_id').eq('follower_id', profile.id),
+  ]);
+
+  const list = entriesRes.data ?? [];
+  const favGenres = ((genreRes.data ?? []) as any[]).map((r: any) => r.genre);
+  const validMentions = new Set(((mpRes.data ?? []) as any[]).map((r: any) => String(r.username).toLowerCase()));
+  const favs = favRes.data ?? [];
+  const diaryPreview = diaryRes.data ?? [];
+  const thisYearCount = thisYearRes.count ?? 0;
+  const goalsRow = goalsRes.data;
   const booksGoal = goalsRow?.books_goal ?? 0;
   const hoursGoal = Number(goalsRow?.hours_goal ?? 0);
-  const { data: sessionRows } = await supabase
-    .from('reading_sessions')
-    .select('hours')
-    .eq('user_id', profile.id)
-    .gte('created_at', yearStart);
-  const hoursThisYear = (sessionRows ?? []).reduce((sum: number, r: any) => sum + Number(r.hours), 0);
-  const booksThisYear = thisYearCount ?? 0;
-
-  // Lists for this profile (own + liked) for the sidebar card.
-  const { data: ownListRows } = await supabase
-    .from('lists')
-    .select('id, title')
-    .eq('owner_id', profile.id)
-    .order('created_at', { ascending: false })
-    .limit(10);
-  const { data: likedListRows } = await supabase
-    .from('list_likes')
-    .select('lists ( id, title )')
-    .eq('user_id', profile.id)
-    .limit(10);
+  const hoursThisYear = ((sessionsRes.data ?? []) as any[]).reduce((sum: number, r: any) => sum + Number(r.hours), 0);
+  const booksThisYear = thisYearCount;
+  const ownListRows = ownListsRes.data ?? [];
+  const likedListRows = likedListsRes.data ?? [];
   const profileLists: { id: string; title: string; mine: boolean }[] = [
-    ...(ownListRows ?? []).map((l: any) => ({ id: l.id, title: l.title, mine: true })),
-    ...(likedListRows ?? []).map((r: any) => r.lists).filter(Boolean).map((l: any) => ({ id: l.id, title: l.title, mine: false })),
+    ...(ownListRows as any[]).map((l: any) => ({ id: l.id, title: l.title, mine: true })),
+    ...(likedListRows as any[]).map((r: any) => r.lists).filter(Boolean).map((l: any) => ({ id: l.id, title: l.title, mine: false })),
   ];
   const pctBooks = booksGoal > 0 ? Math.min(100, (booksThisYear / booksGoal) * 100) : 0;
   const pctHours = hoursGoal > 0 ? Math.min(100, (hoursThisYear / hoursGoal) * 100) : 0;
-
-  const { data: followerRows } = await supabase.from('follows').select('follower_id').eq('followee_id', profile.id);
-  const { data: followingRows } = await supabase.from('follows').select('followee_id').eq('follower_id', profile.id);
-  const followerIds = (followerRows ?? []).map((r: any) => r.follower_id);
-  const followingSet = new Set((followingRows ?? []).map((r: any) => r.followee_id));
+  const followerIds = ((followerRes.data ?? []) as any[]).map((r: any) => r.follower_id);
+  const followingSet = new Set(((followingRes.data ?? []) as any[]).map((r: any) => r.followee_id));
   const friendCount = followerIds.filter((id: string) => followingSet.has(id)).length;
 
   const isOwnProfile = user?.id === profile.id;

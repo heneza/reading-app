@@ -94,27 +94,34 @@ export default async function ExplorePage() {
   let featured: { id: string; title: string; ownerName: string | null; items: CoverItem[] } | null = null;
   {
     const { data: ls } = await supabase.from('lists').select('id, title, owner_id');
-    const all = (ls ?? []).slice().sort(() => Math.random() - 0.5).slice(0, 6);
-    for (const l of all) {
+    const all = (ls ?? []).slice().sort(() => Math.random() - 0.5).slice(0, 8);
+    if (all.length) {
+      // One query for the items of all candidate lists, then pick a random
+      // one that actually has books (was up to 6 sequential queries before).
       const { data: its } = await supabase
         .from('list_items')
-        .select('book_id, position, books ( title, author, cover_id )')
-        .eq('list_id', l.id)
-        .order('position', { ascending: true })
-        .limit(12);
-      if (its && its.length) {
+        .select('list_id, position, book_id, books ( title, author, cover_id )')
+        .in('list_id', all.map((l: any) => l.id))
+        .order('position', { ascending: true });
+      const byList = new Map<string, any[]>();
+      (its ?? []).forEach((it: any) => {
+        const arr = byList.get(it.list_id) ?? [];
+        if (arr.length < 12) arr.push(it);
+        byList.set(it.list_id, arr);
+      });
+      const chosen = all.find((l: any) => (byList.get(l.id)?.length ?? 0) > 0);
+      if (chosen) {
         let ownerName: string | null = null;
-        if (l.owner_id) {
-          const { data: o } = await supabase.from('profiles').select('username').eq('id', l.owner_id).maybeSingle();
+        if (chosen.owner_id) {
+          const { data: o } = await supabase.from('profiles').select('username').eq('id', chosen.owner_id).maybeSingle();
           ownerName = o?.username ?? null;
         }
         featured = {
-          id: l.id,
-          title: l.title,
+          id: chosen.id,
+          title: chosen.title,
           ownerName,
-          items: its.map((it: any) => ({ bookId: it.book_id, title: it.books?.title, author: it.books?.author, coverId: it.books?.cover_id })),
+          items: (byList.get(chosen.id) ?? []).map((it: any) => ({ bookId: it.book_id, title: it.books?.title, author: it.books?.author, coverId: it.books?.cover_id })),
         };
-        break;
       }
     }
   }
@@ -162,18 +169,13 @@ export default async function ExplorePage() {
   }
 
   // --- Logged-in feed -------------------------------------------------
-  const { data: me } = await supabase
-    .from('profiles')
-    .select('username, display_name')
-    .eq('id', user.id)
-    .maybeSingle();
-
-  // Who I follow
-  const { data: followingRows } = await supabase
-    .from('follows')
-    .select('followee_id')
-    .eq('follower_id', user.id);
-  const followingIds = (followingRows ?? []).map((r: any) => r.followee_id);
+  // Independent — fetch the viewer's profile + who they follow together.
+  const [meRes, followingRowsRes] = await Promise.all([
+    supabase.from('profiles').select('username, display_name').eq('id', user.id).maybeSingle(),
+    supabase.from('follows').select('followee_id').eq('follower_id', user.id),
+  ]);
+  const me = meRes.data;
+  const followingIds = (followingRowsRes.data ?? []).map((r: any) => r.followee_id);
 
   // Activity from people I follow: recent shelf changes + reviews, merged.
   type Activity = {
