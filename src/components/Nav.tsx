@@ -12,35 +12,20 @@ export default async function Nav() {
   let username: string | null = null;
   let avatarUrl: string | null = null;
   let displayName: string | null = null;
-  if (user) {
-    const { data: p } = await supabase
-      .from('profiles')
-      .select('username, avatar_url, display_name')
-      .eq('id', user.id)
-      .maybeSingle();
-    username = p?.username ?? null;
-    avatarUrl = p?.avatar_url ?? null;
-    displayName = p?.display_name ?? null;
-  }
-
   let unread = 0;
-  if (user) {
-    const { count } = await supabase
-      .from('messages')
-      .select('id', { count: 'exact', head: true })
-      .eq('recipient_id', user.id)
-      .is('read_at', null);
-    unread = count ?? 0;
-  }
-
   let notifUnread = 0;
   if (user) {
-    const { count } = await supabase
-      .from('notifications')
-      .select('id', { count: 'exact', head: true })
-      .eq('user_id', user.id)
-      .eq('read', false);
-    notifUnread = count ?? 0;
+    // Independent lookups — run together instead of three sequential round-trips.
+    const [pRes, unreadRes, notifRes] = await Promise.all([
+      supabase.from('profiles').select('username, avatar_url, display_name').eq('id', user.id).maybeSingle(),
+      supabase.from('messages').select('id', { count: 'exact', head: true }).eq('recipient_id', user.id).is('read_at', null),
+      supabase.from('notifications').select('id', { count: 'exact', head: true }).eq('user_id', user.id).eq('read', false),
+    ]);
+    username = pRes.data?.username ?? null;
+    avatarUrl = pRes.data?.avatar_url ?? null;
+    displayName = pRes.data?.display_name ?? null;
+    unread = unreadRes.count ?? 0;
+    notifUnread = notifRes.count ?? 0;
   }
 
   const item =
