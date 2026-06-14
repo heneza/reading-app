@@ -3,6 +3,7 @@ import { redirect } from 'next/navigation';
 import { createClient } from '@/utils/supabase/server';
 import { signout } from '@/app/login/actions';
 import { timeAgo } from '@/lib/time';
+import ReadReceiptsToggle from './ReadReceiptsToggle';
 
 export const dynamic = 'force-dynamic';
 
@@ -22,7 +23,7 @@ export default async function SettingsPage() {
 
   const { data: profile } = await supabase
     .from('profiles')
-    .select('username, display_name')
+    .select('username, display_name, read_receipts')
     .eq('id', user.id)
     .maybeSingle();
 
@@ -172,6 +173,7 @@ export default async function SettingsPage() {
             discover you. Direct messages stay private between you and the
             recipient.
           </p>
+          <ReadReceiptsToggle initial={profile?.read_receipts !== false} />
           <form action={signout}>
             <button className="rounded border border-stone-300 px-4 py-2 text-sm font-medium text-stone-700 hover:bg-stone-100">
               Sign out

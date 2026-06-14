@@ -51,14 +51,14 @@ export default async function InboxPage() {
   const convos = Array.from(byOther.values());
 
   // Look up the other participants' names.
-  const nameById = new Map<string, { username: string; display: string | null; avatar: string | null }>();
+  const nameById = new Map<string, { username: string; display: string | null; avatar: string | null; receipts: boolean }>();
   if (convos.length) {
     const { data: profs } = await supabase
       .from('profiles')
-      .select('id, username, display_name, avatar_url')
+      .select('id, username, display_name, avatar_url, read_receipts')
       .in('id', convos.map((c) => c.otherId));
     (profs ?? []).forEach((p: any) =>
-      nameById.set(p.id, { username: p.username, display: p.display_name, avatar: p.avatar_url })
+      nameById.set(p.id, { username: p.username, display: p.display_name, avatar: p.avatar_url, receipts: p.read_receipts !== false })
     );
   }
 
@@ -97,9 +97,14 @@ export default async function InboxPage() {
                       {c.last.body}
                     </p>
                   </div>
-                  <span className="flex-shrink-0 text-xs text-stone-400">
-                    {timeAgo(c.last.created_at)}
-                  </span>
+                  <div className="flex flex-shrink-0 flex-col items-end">
+                    <span className="text-xs text-stone-400">{timeAgo(c.last.created_at)}</span>
+                    {mineLast && (
+                      <span className="text-[10px] text-stone-400">
+                        {c.last.read_at && who?.receipts ? 'Seen' : 'Sent'}
+                      </span>
+                    )}
+                  </div>
                 </Link>
               </li>
             );
