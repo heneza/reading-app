@@ -4,6 +4,7 @@ import { createClient } from '@/utils/supabase/server';
 import MessageComposer from './MessageComposer';
 import MessageList from './MessageList';
 import Avatar from '@/components/Avatar';
+import { blockUser, unblockUser } from '@/app/actions/blocks';
 
 export const dynamic = 'force-dynamic';
 
@@ -25,6 +26,14 @@ export default async function ThreadPage({
     .maybeSingle();
   if (!other) notFound();
   if (other.id === user.id) redirect('/messages');
+
+  const { data: blockRow } = await supabase
+    .from('blocks')
+    .select('blocked_id')
+    .eq('blocker_id', user.id)
+    .eq('blocked_id', other.id)
+    .maybeSingle();
+  const isBlocked = !!blockRow;
 
   // Opening a thread always clears my own unread count.
   await supabase
@@ -59,7 +68,24 @@ export default async function ThreadPage({
         >
           {other.display_name ?? `@${other.username}`}
         </Link>
+
+        <details className="relative ml-auto">
+          <summary className="flex h-7 w-7 cursor-pointer list-none items-center justify-center rounded-full text-stone-400 hover:bg-stone-100 hover:text-brand">⋯</summary>
+          <div className="absolute right-0 z-10 mt-1 w-36 overflow-hidden rounded-lg border border-stone-200 bg-white py-1 shadow-card">
+            <form action={isBlocked ? unblockUser : blockUser}>
+              <input type="hidden" name="blockedId" value={other.id} />
+              <input type="hidden" name="username" value={other.username} />
+              <button className="block w-full px-3 py-1.5 text-left text-sm text-stone-600 hover:bg-brand-soft hover:text-red-600">{isBlocked ? 'Unblock user' : 'Block user'}</button>
+            </form>
+          </div>
+        </details>
       </div>
+
+      {isBlocked && (
+        <p className="mb-3 rounded-lg border border-stone-200 bg-stone-50 p-2 text-center text-xs text-stone-500">
+          You’ve blocked @{other.username}. They can’t message you, and you can’t message them.
+        </p>
+      )}
 
       <div className="flex-1 space-y-2 overflow-y-auto rounded-lg border border-stone-200 bg-white p-4">
         <MessageList

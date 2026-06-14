@@ -4,7 +4,6 @@ import { notFound } from 'next/navigation';
 import { createClient } from '@/utils/supabase/server';
 import { coverUrl } from '@/lib/openlibrary';
 import { followUser, unfollowUser } from '@/app/actions/follows';
-import { blockUser, unblockUser } from '@/app/actions/blocks';
 import { genreName } from '@/lib/genres';
 import { timeAgo, formatDate } from '@/lib/time';
 import Avatar from '@/components/Avatar';
@@ -155,16 +154,6 @@ export default async function ProfilePage({
   const friendCount = followerIds.filter((id: string) => followingSet.has(id)).length;
 
   const isOwnProfile = user?.id === profile.id;
-  let isBlocked = false;
-  if (user && !isOwnProfile) {
-    const { data: blockRow } = await supabase
-      .from('blocks')
-      .select('blocked_id')
-      .eq('blocker_id', user.id)
-      .eq('blocked_id', profile.id)
-      .maybeSingle();
-    isBlocked = !!blockRow;
-  }
   const isFollowing = !!user && !isOwnProfile && followerIds.includes(user.id);
   const isFriend = !!user && isFollowing && followingSet.has(user.id);
   const canSee = (vis: string) => isOwnProfile || vis === 'public' || (vis === 'friends' && isFriend);
@@ -344,11 +333,6 @@ export default async function ProfilePage({
                         <input type="hidden" name="followeeId" value={profile.id} />
                         <input type="hidden" name="username" value={profile.username} />
                         <button className={isFollowing ? 'rounded-full border border-stone-300 px-5 py-1.5 text-sm font-medium text-stone-700 transition hover:bg-stone-50' : 'rounded-full bg-brand px-5 py-1.5 text-sm font-medium text-white transition hover:opacity-90'}>{isFollowing ? 'Following' : 'Follow'}</button>
-                      </form>
-                      <form action={isBlocked ? unblockUser : blockUser}>
-                        <input type="hidden" name="blockedId" value={profile.id} />
-                        <input type="hidden" name="username" value={profile.username} />
-                        <button className="px-1 text-xs text-stone-400 hover:text-red-600" title={isBlocked ? 'Unblock this user' : 'Block this user'}>{isBlocked ? 'Unblock' : 'Block'}</button>
                       </form>
                     </>
                   )}
