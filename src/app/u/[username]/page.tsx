@@ -329,7 +329,7 @@ export default async function ProfilePage({
               )}
 
               {(booksGoal > 0 || hoursGoal > 0) ? (
-                <div className="w-full max-w-[18rem] space-y-2.5 rounded-xl border border-stone-200/80 bg-white/70 p-3.5">
+                <div className="w-full sm:w-80 space-y-2.5 rounded-xl border border-stone-200/80 bg-white/70 p-3.5">
                   <div>
                     <div className="mb-1 flex items-baseline justify-between">
                       <span className="text-xs font-medium text-stone-500">Books this year</span>
@@ -411,7 +411,7 @@ export default async function ProfilePage({
             </section>
           )}
         </div>
-        <aside className="space-y-4 sm:w-44 sm:flex-shrink-0">
+        <aside className="space-y-4 sm:w-80 sm:flex-shrink-0">
           <div className="rounded-lg border border-stone-200 bg-white p-3">
             <div className="mb-2 flex items-center justify-between">
               <h3 className="text-sm font-semibold text-stone-700">Shelf</h3>
