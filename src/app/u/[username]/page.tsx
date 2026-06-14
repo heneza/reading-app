@@ -10,8 +10,6 @@ import Avatar from '@/components/Avatar';
 import ShareButton from '@/components/ShareButton';
 import PostComposer from '@/components/PostComposer';
 import PostCard from '@/components/PostCard';
-import ReadingTimer from '@/components/ReadingTimer';
-import { setReadingGoals, addReadingHours } from '@/app/actions/goals';
 
 function linkifyMentions(text: string, valid: Set<string>): React.ReactNode[] {
   const parts: React.ReactNode[] = [];
@@ -308,14 +306,44 @@ export default async function ProfilePage({
               </div>
             </div>
 
-            {/* Stat blocks */}
-            <div className="flex flex-shrink-0 flex-wrap items-start gap-x-6 gap-y-3">
-              {stats.map((st) => (
-                <Link key={st.label} href={st.href} className="group text-center">
-                  <div className="text-xl font-bold leading-tight text-slate-800 group-hover:text-brand">{st.value.toLocaleString()}</div>
-                  <div className="text-[11px] font-medium uppercase tracking-wide text-slate-400 group-hover:text-brand">{st.label}</div>
-                </Link>
-              ))}
+            {/* Stat blocks + public goal bars */}
+            <div className="flex flex-shrink-0 flex-col gap-3">
+              <div className="flex flex-wrap items-start justify-end gap-x-6 gap-y-3">
+                {stats.map((st) => (
+                  <Link key={st.label} href={st.href} className="group text-center">
+                    <div className="text-xl font-bold leading-tight text-slate-800 group-hover:text-brand">{st.value.toLocaleString()}</div>
+                    <div className="text-[11px] font-medium uppercase tracking-wide text-slate-400 group-hover:text-brand">{st.label}</div>
+                  </Link>
+                ))}
+              </div>
+
+              {(booksGoal > 0 || hoursGoal > 0) ? (
+                <div className="space-y-1.5 sm:min-w-[260px]">
+                  <div>
+                    <div className="mb-0.5 flex items-center justify-between text-xs text-stone-500">
+                      <span>Books this year</span>
+                      <span className="font-medium text-stone-700">{booksThisYear}{booksGoal > 0 ? ` / ${booksGoal}` : ''}</span>
+                    </div>
+                    <div className="h-2 w-full overflow-hidden rounded-full bg-brand-soft">
+                      <div className="h-full rounded-full bg-brand" style={{ width: `${pctBooks}%` }} />
+                    </div>
+                  </div>
+                  <div>
+                    <div className="mb-0.5 flex items-center justify-between text-xs text-stone-500">
+                      <span>Hours this year</span>
+                      <span className="font-medium text-stone-700">{hoursThisYear.toFixed(1)}{hoursGoal > 0 ? ` / ${hoursGoal}` : ''}</span>
+                    </div>
+                    <div className="h-2 w-full overflow-hidden rounded-full bg-brand-soft">
+                      <div className="h-full rounded-full bg-brand" style={{ width: `${pctHours}%` }} />
+                    </div>
+                  </div>
+                  {isOwnProfile && (
+                    <Link href="/goals" className="inline-block text-xs text-brand hover:underline">Manage goals →</Link>
+                  )}
+                </div>
+              ) : isOwnProfile ? (
+                <Link href="/goals" className="text-right text-xs text-brand hover:underline">Set reading goals →</Link>
+              ) : null}
             </div>
           </div>
 
@@ -385,63 +413,6 @@ export default async function ProfilePage({
                   );
                 })}
               </ul>
-            </section>
-          )}
-
-          {(isOwnProfile || booksGoal > 0 || hoursGoal > 0 || hoursThisYear > 0) && (
-            <section className="mt-8">
-              <div className="rounded-lg border border-stone-200 bg-white p-4">
-                <h2 className="mb-3 text-sm font-semibold uppercase tracking-wide text-slate-400">Reading goals · {yearNum}</h2>
-
-                <div className="mb-3">
-                  <div className="mb-1 flex items-center justify-between text-sm">
-                    <span className="text-stone-600">Books read</span>
-                    <span className="font-medium text-stone-700">{booksThisYear} / {booksGoal > 0 ? booksGoal : '—'}</span>
-                  </div>
-                  <div className="h-2.5 w-full overflow-hidden rounded-full bg-brand-soft">
-                    <div className="h-full rounded-full bg-brand" style={{ width: `${pctBooks}%` }} />
-                  </div>
-                </div>
-
-                <div>
-                  <div className="mb-1 flex items-center justify-between text-sm">
-                    <span className="text-stone-600">Hours read</span>
-                    <span className="font-medium text-stone-700">{hoursThisYear.toFixed(1)} / {hoursGoal > 0 ? hoursGoal : '—'}</span>
-                  </div>
-                  <div className="h-2.5 w-full overflow-hidden rounded-full bg-brand-soft">
-                    <div className="h-full rounded-full bg-brand" style={{ width: `${pctHours}%` }} />
-                  </div>
-                </div>
-
-                {isOwnProfile && (
-                  <div className="mt-4 space-y-3">
-                    <ReadingTimer />
-
-                    <form action={addReadingHours} className="flex items-end gap-2">
-                      <label className="flex flex-col text-xs text-slate-500">
-                        Add hours manually
-                        <input type="number" name="hours" min="0.25" max="24" step="0.25" placeholder="e.g. 1.5" className="mt-1 w-28 rounded border border-slate-300 px-2 py-1 text-sm text-slate-700" />
-                      </label>
-                      <button className="rounded-full border border-stone-300 px-3 py-1.5 text-sm font-medium text-stone-700 hover:bg-stone-100">Add</button>
-                    </form>
-
-                    <details className="text-sm">
-                      <summary className="cursor-pointer text-brand hover:underline">Edit goals</summary>
-                      <form action={setReadingGoals} className="mt-2 flex flex-wrap items-end gap-3">
-                        <label className="flex flex-col text-xs text-slate-500">
-                          Books goal
-                          <input type="number" name="booksGoal" min="0" step="1" defaultValue={booksGoal || ''} placeholder="e.g. 24" className="mt-1 w-24 rounded border border-slate-300 px-2 py-1 text-sm text-slate-700" />
-                        </label>
-                        <label className="flex flex-col text-xs text-slate-500">
-                          Hours goal
-                          <input type="number" name="hoursGoal" min="0" step="1" defaultValue={hoursGoal || ''} placeholder="e.g. 100" className="mt-1 w-24 rounded border border-slate-300 px-2 py-1 text-sm text-slate-700" />
-                        </label>
-                        <button className="rounded-full bg-brand px-4 py-1.5 text-sm font-medium text-white hover:opacity-90">Save goals</button>
-                      </form>
-                    </details>
-                  </div>
-                )}
-              </div>
             </section>
           )}
         </div>

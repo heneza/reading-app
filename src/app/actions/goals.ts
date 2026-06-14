@@ -7,6 +7,7 @@ import { createClient } from '@/utils/supabase/server';
 async function revalidateMine(supabase: ReturnType<typeof createClient>, userId: string) {
   const { data: me } = await supabase.from('profiles').select('username').eq('id', userId).maybeSingle();
   if (me?.username) revalidatePath(`/u/${me.username}`);
+  revalidatePath('/goals');
 }
 
 // Set this year's reading targets (books + hours).
