@@ -6,7 +6,7 @@ import { rateBook } from '@/app/actions/reviews';
 
 function Star() {
   return (
-    <svg width="26" height="26" viewBox="0 0 24 24" fill="currentColor" className="block">
+    <svg width="26" height="26" viewBox="0 0 24 24" fill="currentColor" className="block shrink-0">
       <path d="M12 .587l3.668 7.431 8.2 1.192-5.934 5.784 1.401 8.168L12 18.896l-7.335 3.866 1.401-8.168L.132 9.21l8.2-1.192z" />
     </svg>
   );
@@ -44,7 +44,7 @@ export default function StarRating({ bookId, initial }: { bookId: string; initia
         onClick={(e) => commit(fromEvent(e))}
       >
         <div className="flex text-stone-300">{[0, 1, 2, 3, 4].map((i) => <Star key={i} />)}</div>
-        <div className="pointer-events-none absolute inset-0 flex overflow-hidden text-brand" style={{ width: `${(shown / 5) * 100}%` }}>
+        <div className="pointer-events-none absolute inset-0 flex flex-nowrap overflow-hidden text-brand" style={{ width: `${(shown / 5) * 100}%` }}>
           {[0, 1, 2, 3, 4].map((i) => <Star key={i} />)}
         </div>
       </div>
