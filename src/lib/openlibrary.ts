@@ -76,7 +76,7 @@ export async function fetchSubjects(workKey: string): Promise<string[]> {
   const key = workKey.startsWith('/') ? workKey : `/${workKey}`;
   if (!/^\/works\/OL\d+W$/.test(key)) return []; // guard against SSRF via crafted keys
   try {
-    const res = await fetch(`https://openlibrary.org${key}.json`, { cache: 'no-store' });
+    const res = await fetch(`https://openlibrary.org${key}.json`, { cache: 'no-store', signal: AbortSignal.timeout(5000) });
     if (!res.ok) return [];
     const data = await res.json();
     const subjects = data.subjects;
@@ -111,7 +111,7 @@ export async function fetchDescription(workKey: string): Promise<string> {
   const key = workKey.startsWith('/') ? workKey : `/${workKey}`;
   if (!/^\/works\/OL\d+W$/.test(key)) return ''; // guard against SSRF via crafted keys
   try {
-    const res = await fetch(`https://openlibrary.org${key}.json`, { cache: 'no-store' });
+    const res = await fetch(`https://openlibrary.org${key}.json`, { cache: 'no-store', signal: AbortSignal.timeout(5000) });
     if (!res.ok) return '';
     const d = await res.json();
     const desc = d?.description;

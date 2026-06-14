@@ -27,10 +27,17 @@ export default async function BookPage({ params }: { params: { id: string } }) {
   const { data: { user } } = await supabase.auth.getUser();
 
   const { data: book } = await supabase
-    .from('books').select('id, title, author, cover_id, ol_key').eq('id', params.id).single();
+    .from('books').select('id, title, author, cover_id, ol_key, description').eq('id', params.id).single();
   if (!book) notFound();
 
-  const description = await fetchDescription(book.ol_key);
+  // Description: use the cached copy; only hit Open Library the first time.
+  let description: string = book.description ?? '';
+  if (!description && book.ol_key) {
+    description = await fetchDescription(book.ol_key);
+    if (description && user) {
+      await supabase.from('books').update({ description }).eq('id', book.id);
+    }
+  }
   const today = new Date().toISOString().slice(0, 10);
 
   let myRating: number | null = null;
