@@ -6,7 +6,7 @@ export const dynamic = 'force-dynamic';
 const DAILY_CAP = 40;          // assistant messages per user per day
 const MAX_MSG_LEN = 2000;      // chars per user message
 const MAX_TURNS = 12;          // recent turns sent to the model
-const MODEL = process.env.GEMINI_MODEL || 'gemini-2.5-flash';
+const MODEL = process.env.GEMINI_MODEL || 'gemini-2.5-flash-lite';
 
 // What the assistant is allowed to know about the app (feature help). Static —
 // contains no user data.
