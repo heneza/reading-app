@@ -127,7 +127,14 @@ export async function POST(req: Request) {
       }
     );
     if (!res.ok) {
-      console.error('Assistant upstream error', res.status, (await res.text()).slice(0, 300));
+      const detail = (await res.text()).slice(0, 300);
+      console.error('Assistant upstream error', res.status, detail);
+      if (res.status === 429) {
+        return NextResponse.json(
+          { error: "I'm getting a lot of questions right now — give it a few seconds and try again." },
+          { status: 429 }
+        );
+      }
       return NextResponse.json({ error: 'The assistant is unavailable right now.' }, { status: 502 });
     }
     const data = await res.json();
