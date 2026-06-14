@@ -153,3 +153,27 @@ export async function setVisibility(formData: FormData) {
 
   revalidatePath('/settings');
 }
+
+
+// Finish onboarding: set the display name + starter genres, then go home.
+export async function completeOnboarding(
+  displayName: string,
+  slugs: string[]
+): Promise<{ error: string | null }> {
+  const supabase = createClient();
+  const { data: { user } } = await supabase.auth.getUser();
+  if (!user) return { error: 'You are not signed in.' };
+
+  const name = String(displayName ?? '').trim().slice(0, 80) || null;
+  await supabase.from('profiles').update({ display_name: name }).eq('id', user.id);
+
+  await supabase.from('profile_genres').delete().eq('user_id', user.id);
+  const clean = (slugs ?? []).filter((x) => typeof x === 'string').slice(0, 29);
+  if (clean.length) {
+    await supabase.from('profile_genres').insert(clean.map((genre) => ({ user_id: user.id, genre })));
+  }
+
+  const { data: p } = await supabase.from('profiles').select('username').eq('id', user.id).maybeSingle();
+  if (p?.username) revalidatePath(`/u/${p.username}`);
+  return { error: null };
+}

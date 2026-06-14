@@ -31,45 +31,41 @@ export async function login(formData: FormData) {
 
 export async function signup(formData: FormData) {
   const supabase = createClient();
-  const email = String(formData.get('identifier') ?? formData.get('email') ?? '').trim();
+  const email = String(formData.get('email') ?? '').trim();
   const password = String(formData.get('password'));
-
-  if (!/^[^@\s]+@[^@\s]+\.[^@\s]+$/.test(email)) {
-    redirect('/login?error=' + encodeURIComponent('Enter a valid email address to sign up.'));
-  }
+  const dob = String(formData.get('dob') ?? '').trim();
+  const gender = String(formData.get('gender') ?? '').trim();
   const username = normalizeUsername(String(formData.get('username') ?? ''));
 
-  // Validate the chosen username.
+  const err = (m: string) => redirect('/login?mode=signup&error=' + encodeURIComponent(m));
+
+  if (!/^[^@\s]+@[^@\s]+\.[^@\s]+$/.test(email)) err('Enter a valid email address.');
+
   const fmtError = validateUsername(username);
-  if (fmtError) {
-    redirect('/login?error=' + encodeURIComponent(fmtError));
-  }
+  if (fmtError) err(fmtError);
 
-  // Is it already taken? (case-insensitive)
-  const { data: taken } = await supabase
-    .from('profiles')
-    .select('id')
-    .ilike('username', username)
-    .maybeSingle();
-  if (taken) {
-    redirect(
-      '/login?error=' +
-        encodeURIComponent(`@${username} is taken — please choose another.`)
-    );
-  }
+  if (!/^\d{4}-\d{2}-\d{2}$/.test(dob)) err('Please enter your date of birth.');
+  // Age gate: must be at least 13.
+  const age = (Date.now() - new Date(dob).getTime()) / (365.25 * 24 * 3600 * 1000);
+  if (!(age >= 13)) err('You must be at least 13 years old to sign up.');
+  if (age > 120) err('Please enter a valid date of birth.');
 
-  // Create the account, passing the username through to the signup trigger.
+  const allowedGenders = ['female', 'male', 'non-binary', 'other', 'prefer-not-to-say'];
+  const g = allowedGenders.includes(gender) ? gender : 'prefer-not-to-say';
+
+  // Username taken? (case-insensitive)
+  const { data: taken } = await supabase.from('profiles').select('id').ilike('username', username).maybeSingle();
+  if (taken) err(`@${username} is taken — please choose another.`);
+
   const { error } = await supabase.auth.signUp({
     email,
     password,
-    options: { data: { username } },
+    options: { data: { username, date_of_birth: dob, gender: g } },
   });
-  if (error) {
-    redirect('/login?error=' + encodeURIComponent(error.message));
-  }
+  if (error) err('Could not create your account. Try a different email.');
 
   revalidatePath('/', 'layout');
-  redirect('/');
+  redirect('/welcome');
 }
 
 export async function signout() {
