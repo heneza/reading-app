@@ -25,17 +25,20 @@ export async function searchBooks(query: string): Promise<OLBook[]> {
     '&limit=20' +
     '&fields=key,title,author_name,first_publish_year,cover_i';
 
-  const res = await fetch(url, { cache: 'no-store' });
-  if (!res.ok) return [];
-
-  const data = await res.json();
-  return (data.docs ?? []).map((d: any): OLBook => ({
-    key: d.key,
-    title: d.title,
-    author: d.author_name?.[0],
-    year: d.first_publish_year,
-    coverId: d.cover_i,
-  }));
+  try {
+    const res = await fetch(url, { cache: 'no-store', signal: AbortSignal.timeout(8000) });
+    if (!res.ok) return [];
+    const data = await res.json();
+    return (data.docs ?? []).map((d: any): OLBook => ({
+      key: d.key,
+      title: d.title,
+      author: d.author_name?.[0],
+      year: d.first_publish_year,
+      coverId: d.cover_i,
+    }));
+  } catch {
+    return [];
+  }
 }
 
 // Search authors by name.
@@ -47,15 +50,18 @@ export async function searchAuthors(query: string): Promise<OLAuthor[]> {
     'https://openlibrary.org/search/authors.json' +
     `?q=${encodeURIComponent(q)}&limit=20`;
 
-  const res = await fetch(url, { cache: 'no-store' });
-  if (!res.ok) return [];
-
-  const data = await res.json();
-  return (data.docs ?? []).map((d: any): OLAuthor => ({
-    key: d.key,
-    name: d.name,
-    workCount: d.work_count,
-  }));
+  try {
+    const res = await fetch(url, { cache: 'no-store', signal: AbortSignal.timeout(8000) });
+    if (!res.ok) return [];
+    const data = await res.json();
+    return (data.docs ?? []).map((d: any): OLAuthor => ({
+      key: d.key,
+      name: d.name,
+      workCount: d.work_count,
+    }));
+  } catch {
+    return [];
+  }
 }
 
 export function coverUrl(coverId?: number | null, size: 'S' | 'M' | 'L' = 'M') {
