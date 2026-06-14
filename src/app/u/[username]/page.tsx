@@ -260,11 +260,11 @@ export default async function ProfilePage({
   list
     .filter((e: any) => e.status === 'read')
     .forEach((e: any) => {
-      if (recentRead.length >= 12 || recentSeen.has(e.book_id)) return;
+      if (recentRead.length >= 4 || recentSeen.has(e.book_id)) return;
       recentSeen.add(e.book_id);
       recentRead.push({ book_id: e.book_id, title: e.books?.title, cover_id: e.books?.cover_id, rating: e.rating });
     });
-  const recentReadRow = recentRead.slice(0, 12);
+  const recentReadRow = recentRead.slice(0, 4);
 
   const grouped = STATUS_ORDER.map((status) => ({ status, items: list.filter((e: any) => e.status === status) })).filter((g) => g.items.length > 0);
   const connHref = (t: string) => `/u/${profile.username}/connections?type=${t}`;
@@ -370,7 +370,7 @@ export default async function ProfilePage({
           {recentReadRow.length > 0 && (
             <section className={favs.length > 0 ? 'mt-8' : ''}>
               <h2 className="mb-3 text-sm font-semibold uppercase tracking-wide text-slate-400">Recently read</h2>
-              <ul className="grid grid-cols-4 gap-3 sm:grid-cols-6">
+              <ul className="grid max-w-md grid-cols-4 gap-3">
                 {recentReadRow.map((b) => {
                   const src = coverUrl(b.cover_id, 'M');
                   return (

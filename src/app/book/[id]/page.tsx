@@ -12,6 +12,7 @@ import ReviewForm from './ReviewForm';
 import ReviewItem from './ReviewItem';
 import { removeFromShelf } from '@/app/actions/shelf';
 import { logRead, deleteDiaryEntry } from '@/app/actions/diary';
+import { addContentWarning, removeContentWarning } from '@/app/actions/content-warnings';
 import { classifyBook } from '@/app/actions/genres';
 import { genreName } from '@/lib/genres';
 import StarRating from '@/components/StarRating';
@@ -53,6 +54,22 @@ export default async function BookPage({ params }: { params: { id: string } }) {
       .order('created_at', { ascending: false });
     myDiary = de ?? [];
   }
+
+  // Content warnings (community-contributed): aggregate distinct warnings.
+  const { data: cwRows } = await supabase
+    .from('content_warnings')
+    .select('warning, user_id')
+    .eq('book_id', book.id);
+  const cwAgg = new Map<string, { count: number; mine: boolean }>();
+  (cwRows ?? []).forEach((r: any) => {
+    const cur = cwAgg.get(r.warning) ?? { count: 0, mine: false };
+    cur.count += 1;
+    if (r.user_id === user?.id) cur.mine = true;
+    cwAgg.set(r.warning, cur);
+  });
+  const warnings = Array.from(cwAgg.entries())
+    .map(([warning, v]) => ({ warning, count: v.count, mine: v.mine }))
+    .sort((a, b) => b.count - a.count);
 
   // Genres for this book — classify on first view if not done yet.
   let bookGenres: string[] = [];
@@ -151,6 +168,51 @@ export default async function BookPage({ params }: { params: { id: string } }) {
           )}
         </div>
       </div>
+
+      {/* --- Content warnings --- */}
+      <section className="mt-6">
+        <details className="rounded-lg border border-stone-200 bg-white p-3">
+          <summary className="cursor-pointer text-sm font-semibold text-stone-700">
+            Content warnings{warnings.length > 0 ? ` (${warnings.length})` : ''}
+          </summary>
+          <div className="mt-3">
+            {warnings.length === 0 ? (
+              <p className="text-sm text-stone-500">None flagged yet.</p>
+            ) : (
+              <ul className="flex flex-wrap gap-2">
+                {warnings.map((w) => (
+                  <li key={w.warning} className="flex items-center gap-1 rounded-full bg-stone-100 px-3 py-1 text-xs text-stone-700">
+                    <span>{w.warning}</span>
+                    <span className="text-stone-400">{w.count}</span>
+                    {w.mine && (
+                      <form action={removeContentWarning} className="inline">
+                        <input type="hidden" name="bookId" value={book.id} />
+                        <input type="hidden" name="warning" value={w.warning} />
+                        <button title="Remove your flag" className="ml-0.5 text-stone-400 hover:text-red-600">×</button>
+                      </form>
+                    )}
+                  </li>
+                ))}
+              </ul>
+            )}
+
+            {user ? (
+              <form action={addContentWarning} className="mt-3 flex flex-wrap items-center gap-2">
+                <input type="hidden" name="bookId" value={book.id} />
+                <input name="warning" list="cw-suggestions" placeholder="Add a content warning…" maxLength={60} className="flex-1 rounded border border-slate-300 px-3 py-1 text-sm" />
+                <datalist id="cw-suggestions">
+                  {['Violence', 'Death', 'Gore', 'Sexual assault', 'Abuse', 'Domestic abuse', 'Child abuse', 'Self-harm', 'Suicide', 'Eating disorder', 'Addiction', 'Animal cruelty', 'Racism', 'Homophobia', 'Transphobia', 'Misogyny', 'War', 'Torture', 'Kidnapping', 'Mental illness', 'Medical content', 'Pregnancy', 'Miscarriage'].map((c) => (
+                    <option key={c} value={c} />
+                  ))}
+                </datalist>
+                <button className="rounded bg-slate-700 px-3 py-1 text-sm text-white hover:opacity-90">Add</button>
+              </form>
+            ) : (
+              <p className="mt-3 text-xs text-stone-400">Log in to flag a content warning.</p>
+            )}
+          </div>
+        </details>
+      </section>
 
       {/* --- Reading diary --- */}
       {user && (
