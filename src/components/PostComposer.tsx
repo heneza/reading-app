@@ -4,19 +4,15 @@ import { useRef, useState } from 'react';
 import { useRouter } from 'next/navigation';
 import { createPost } from '@/app/actions/posts';
 
-const COLORS = [
-  { name: 'Black', value: '#111111' },
-  { name: 'Red', value: '#e11d48' },
-  { name: 'Green', value: '#16a34a' },
-  { name: 'Pink', value: '#db2777' },
-  { name: 'Blue', value: '#2563eb' },
-];
 const MAX_SHORT = 280;
 
 export default function PostComposer() {
   const editorRef = useRef<HTMLDivElement | null>(null);
+  const colorInputRef = useRef<HTMLInputElement | null>(null);
+  const [color, setColor] = useState('#111111');
   const [count, setCount] = useState(0);
-  const [tagsInput, setTagsInput] = useState('');
+  const [tags, setTags] = useState<string[]>([]);
+  const [tagDraft, setTagDraft] = useState('');
   const [isArticle, setIsArticle] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [pending, setPending] = useState(false);
@@ -46,10 +42,28 @@ export default function PostComposer() {
     sync();
   }
 
+  function addTag(raw: string) {
+    const clean = raw.trim().toLowerCase().replace(/^#/, '');
+    if (!clean) return;
+    setTags((prev) =>
+      prev.includes(clean) || prev.length >= 20 ? prev : [...prev, clean]
+    );
+  }
+  function onTagKey(e: React.KeyboardEvent<HTMLInputElement>) {
+    if (e.key === 'Enter' || e.key === ' ' || e.key === ',') {
+      e.preventDefault();
+      addTag(tagDraft);
+      setTagDraft('');
+    } else if (e.key === 'Backspace' && !tagDraft && tags.length) {
+      setTags(tags.slice(0, -1));
+    }
+  }
+
   function reset() {
     if (editorRef.current) editorRef.current.innerHTML = '';
     setCount(0);
-    setTagsInput('');
+    setTags([]);
+    setTagDraft('');
     setIsArticle(false);
   }
 
@@ -68,13 +82,11 @@ export default function PostComposer() {
     }
     setError(null);
     setPending(true);
-    const tags = tagsInput
-      .split(/[\s,]+/)
-      .map((t) => t.replace(/^#/, '').toLowerCase())
-      .filter(Boolean);
+    const allTags = [...tags];
+    if (tagDraft.trim()) allTags.push(tagDraft.trim().toLowerCase().replace(/^#/, ''));
     const res = await createPost({
       html,
-      tags,
+      tags: allTags,
       isArticle: text.length > MAX_SHORT ? isArticle : false,
     });
     setPending(false);
@@ -87,10 +99,7 @@ export default function PostComposer() {
   }
 
   const over = count > MAX_SHORT;
-  const btn =
-    'rounded px-2 py-1 text-sm text-stone-600 hover:bg-brand-soft hover:text-brand';
-
-  // keep the editor selection when clicking a toolbar button
+  const btn = 'rounded px-2 py-1 text-sm text-stone-600 hover:bg-brand-soft hover:text-brand';
   const hold = (e: React.MouseEvent) => e.preventDefault();
 
   return (
@@ -104,17 +113,28 @@ export default function PostComposer() {
 
         <span className="mx-1 h-4 w-px bg-stone-200" />
 
-        {COLORS.map((c) => (
-          <button
-            key={c.value}
-            type="button"
-            onMouseDown={hold}
-            onClick={() => exec('foreColor', c.value)}
-            title={c.name}
-            className="h-5 w-5 rounded-full border border-stone-300"
-            style={{ backgroundColor: c.value }}
-          />
-        ))}
+        {/* Single colour swatch: click applies, right-click picks a colour */}
+        <button
+          type="button"
+          onMouseDown={hold}
+          onClick={() => exec('foreColor', color)}
+          onContextMenu={(e) => {
+            e.preventDefault();
+            colorInputRef.current?.click();
+          }}
+          title="Click to apply colour · right-click to pick a colour"
+          className="h-5 w-5 rounded-full border border-stone-300"
+          style={{ backgroundColor: color }}
+        />
+        <input
+          ref={colorInputRef}
+          type="color"
+          value={color}
+          onChange={(e) => setColor(e.target.value)}
+          tabIndex={-1}
+          aria-hidden
+          className="pointer-events-none absolute h-0 w-0 opacity-0"
+        />
 
         <span className="mx-1 h-4 w-px bg-stone-200" />
 
@@ -150,11 +170,32 @@ export default function PostComposer() {
 
       {/* Tags */}
       <input
-        value={tagsInput}
-        onChange={(e) => setTagsInput(e.target.value)}
-        placeholder="Add tags: books, kafka, poetry…"
+        value={tagDraft}
+        onChange={(e) => setTagDraft(e.target.value)}
+        onKeyDown={onTagKey}
+        placeholder="Add a tag and press space or enter…"
         className="mt-2 w-full rounded border border-stone-200 px-3 py-1.5 text-sm focus:border-brand focus:outline-none"
       />
+      {tags.length > 0 && (
+        <div className="mt-2 flex flex-wrap gap-2">
+          {tags.map((t) => (
+            <span
+              key={t}
+              className="inline-flex items-center gap-1 rounded-full bg-brand-soft px-2.5 py-0.5 text-xs font-medium text-brand"
+            >
+              #{t}
+              <button
+                type="button"
+                onClick={() => setTags(tags.filter((x) => x !== t))}
+                className="text-brand/60 hover:text-brand"
+                title="Remove tag"
+              >
+                ×
+              </button>
+            </span>
+          ))}
+        </div>
+      )}
 
       {error && <p className="mt-2 text-sm text-red-700">{error}</p>}
 
