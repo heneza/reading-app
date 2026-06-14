@@ -186,7 +186,7 @@ export default async function SettingsPage() {
               </select>
             </label>
             <label className="flex items-center justify-between gap-3">
-              <span>Who can see your comments</span>
+              <span>Who can see your replies</span>
               <select name="comments_visibility" defaultValue={profile?.comments_visibility ?? 'public'}>
                 <option value="public">Everyone</option>
                 <option value="friends">Friends only</option>

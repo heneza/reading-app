@@ -20,9 +20,7 @@ function linkifyMentions(text: string, valid: Set<string>): React.ReactNode[] {
     if (m.index > last) parts.push(text.slice(last, m.index));
     const uname = m[1];
     if (valid.has(uname.toLowerCase())) {
-      parts.push(
-        <Link key={key++} href={`/u/${uname}`} className="font-medium text-brand hover:underline">@{uname}</Link>
-      );
+      parts.push(<Link key={key++} href={`/u/${uname}`} className="font-medium text-brand hover:underline">@{uname}</Link>);
     } else {
       parts.push(m[0]);
     }
@@ -39,8 +37,9 @@ const STATUS_LABEL: Record<string, string> = {
   dnf: 'Did not finish',
 };
 const STATUS_ORDER = ['reading', 'want_to_read', 'read', 'dnf'];
-const TABS = ['posts', 'reposts', 'likes', 'comments', 'reviews', 'shelf'] as const;
-type Tab = (typeof TABS)[number];
+const TAB_BAR = ['posts', 'likes', 'replies', 'reviews'] as const;
+const ALL_TABS = ['posts', 'likes', 'replies', 'reviews', 'shelf'];
+type Tab = 'posts' | 'likes' | 'replies' | 'reviews' | 'shelf';
 
 export const dynamic = 'force-dynamic';
 
@@ -63,12 +62,9 @@ export default async function ProfilePage({
     .maybeSingle();
   if (!profile) notFound();
 
-  const tab: Tab = (TABS as readonly string[]).includes(searchParams?.tab ?? '')
-    ? (searchParams!.tab as Tab)
-    : 'posts';
+  const tab: Tab = (ALL_TABS.includes(searchParams?.tab ?? '') ? searchParams!.tab : 'posts') as Tab;
   const tagFilter = searchParams?.tag ?? null;
 
-  // Shelf (also gives the book count)
   const { data: entries } = await supabase
     .from('reading_entries')
     .select('status, rating, book_id, books ( title, author, cover_id )')
@@ -76,7 +72,6 @@ export default async function ProfilePage({
     .order('updated_at', { ascending: false });
   const list = entries ?? [];
 
-  // Favourite genres + bio mentions + favourites
   const { data: genreRows } = await supabase.from('profile_genres').select('genre').eq('user_id', profile.id);
   const favGenres = (genreRows ?? []).map((r: any) => r.genre);
 
@@ -96,7 +91,6 @@ export default async function ProfilePage({
     .order('position');
   const favs = favRows ?? [];
 
-  // Follow graph
   const { data: followerRows } = await supabase.from('follows').select('follower_id').eq('followee_id', profile.id);
   const { data: followingRows } = await supabase.from('follows').select('followee_id').eq('follower_id', profile.id);
   const followerIds = (followerRows ?? []).map((r: any) => r.follower_id);
@@ -106,12 +100,10 @@ export default async function ProfilePage({
   const isOwnProfile = user?.id === profile.id;
   const isFollowing = !!user && !isOwnProfile && followerIds.includes(user.id);
   const isFriend = !!user && isFollowing && followingSet.has(user.id);
-  const canSee = (vis: string) =>
-    isOwnProfile || vis === 'public' || (vis === 'friends' && isFriend);
+  const canSee = (vis: string) => isOwnProfile || vis === 'public' || (vis === 'friends' && isFriend);
   const canLikes = canSee(profile.likes_visibility ?? 'public');
-  const canComments = canSee(profile.comments_visibility ?? 'public');
+  const canReplies = canSee(profile.comments_visibility ?? 'public');
 
-  // Helper: load posts by id (keeping order) + their authors
   async function loadPosts(ids: string[]) {
     if (!ids.length) return { posts: [] as any[], authors: new Map<string, any>() };
     const { data } = await supabase.from('posts').select('*').in('id', ids);
@@ -127,32 +119,41 @@ export default async function ProfilePage({
   }
 
   // ---- Tab data ----
-  let posts: any[] = [];
+  let feed: any[] = [];
+  let repostAuthors = new Map<string, any>();
   let topTags: string[] = [];
-  let repostItems: { posts: any[]; authors: Map<string, any> } = { posts: [], authors: new Map() };
   let likeItems: { posts: any[]; authors: Map<string, any> } = { posts: [], authors: new Map() };
-  let commentItems: any[] = [];
-  let commentOwner = new Map<string, string>();
+  let replyItems: any[] = [];
+  let replyOwner = new Map<string, string>();
   let reviews: any[] = [];
 
   if (tab === 'posts') {
-    let q = supabase.from('posts').select('*').eq('user_id', profile.id).order('created_at', { ascending: false }).limit(30);
-    if (tagFilter) q = q.contains('tags', [tagFilter]);
-    posts = (await q).data ?? [];
+    const { data: op } = await supabase.from('posts').select('*').eq('user_id', profile.id).order('created_at', { ascending: false }).limit(30);
+    const originals = op ?? [];
+    const { data: rr } = await supabase.from('post_reposts').select('post_id, created_at').eq('user_id', profile.id).order('created_at', { ascending: false }).limit(30);
+    const loaded = await loadPosts((rr ?? []).map((r: any) => r.post_id));
+    repostAuthors = loaded.authors;
+    const rMap = new Map(loaded.posts.map((p: any) => [p.id, p]));
+    feed = [
+      ...originals.map((p: any) => ({ kind: 'post', at: p.created_at, post: p })),
+      ...(rr ?? []).map((r: any) => {
+        const p = rMap.get(r.post_id);
+        return p ? { kind: 'repost', at: r.created_at, post: p } : null;
+      }).filter(Boolean),
+    ].sort((a: any, b: any) => (a.at < b.at ? 1 : -1));
+    if (tagFilter) feed = feed.filter((it: any) => (it.post.tags ?? []).includes(tagFilter));
+
     const { data: tagRows } = await supabase.from('posts').select('tags').eq('user_id', profile.id).limit(200);
     const tally = new Map<string, number>();
     (tagRows ?? []).forEach((p: any) => (p.tags ?? []).forEach((t: string) => tally.set(t, (tally.get(t) ?? 0) + 1)));
     topTags = Array.from(tally.entries()).sort((a, b) => b[1] - a[1]).slice(0, 8).map(([t]) => t);
-  } else if (tab === 'reposts') {
-    const { data: rr } = await supabase.from('post_reposts').select('post_id').eq('user_id', profile.id).order('created_at', { ascending: false }).limit(30);
-    repostItems = await loadPosts((rr ?? []).map((r: any) => r.post_id));
   } else if (tab === 'likes' && canLikes) {
     const { data: lr } = await supabase.from('post_reactions').select('post_id').eq('user_id', profile.id).eq('type', 'like').limit(30);
     likeItems = await loadPosts((lr ?? []).map((r: any) => r.post_id));
-  } else if (tab === 'comments' && canComments) {
+  } else if (tab === 'replies' && canReplies) {
     const { data: cc } = await supabase.from('post_comments').select('id, post_id, body, created_at').eq('user_id', profile.id).order('created_at', { ascending: false }).limit(30);
-    commentItems = cc ?? [];
-    const pids = Array.from(new Set(commentItems.map((c: any) => c.post_id)));
+    replyItems = cc ?? [];
+    const pids = Array.from(new Set(replyItems.map((c: any) => c.post_id)));
     if (pids.length) {
       const { data: ps } = await supabase.from('posts').select('id, user_id').in('id', pids);
       const ownerIds = Array.from(new Set((ps ?? []).map((p: any) => p.user_id)));
@@ -161,7 +162,7 @@ export default async function ProfilePage({
         const { data: pr } = await supabase.from('profiles').select('id, username').in('id', ownerIds);
         (pr ?? []).forEach((p: any) => uname.set(p.id, p.username));
       }
-      (ps ?? []).forEach((p: any) => commentOwner.set(p.id, uname.get(p.user_id) ?? ''));
+      (ps ?? []).forEach((p: any) => replyOwner.set(p.id, uname.get(p.user_id) ?? ''));
     }
   } else if (tab === 'reviews') {
     const { data: rv } = await supabase.from('reviews').select('id, body, book_id, created_at, books ( title )').eq('user_id', profile.id).order('created_at', { ascending: false }).limit(30);
@@ -171,6 +172,7 @@ export default async function ProfilePage({
   const grouped = STATUS_ORDER.map((status) => ({ status, items: list.filter((e: any) => e.status === status) })).filter((g) => g.items.length > 0);
   const connHref = (t: string) => `/u/${profile.username}/connections?type=${t}`;
   const tabHref = (t: string) => `/u/${profile.username}?tab=${t}`;
+  const TAB_LABEL: Record<string, string> = { posts: 'Posts', likes: 'Likes', replies: 'Replies', reviews: 'Reviews' };
 
   return (
     <div>
@@ -182,22 +184,12 @@ export default async function ProfilePage({
             <h1 className="text-2xl font-bold">{profile.display_name ?? profile.username}</h1>
             <p className="text-sm text-slate-500">@{profile.username}</p>
             <p className="mt-1 flex flex-wrap gap-x-3 text-sm text-slate-500">
-              <Link href={connHref('followers')} className="hover:text-brand">
-                <span className="font-medium text-slate-700">{followerIds.length}</span> followers
-              </Link>
-              <Link href={connHref('following')} className="hover:text-brand">
-                <span className="font-medium text-slate-700">{followingSet.size}</span> following
-              </Link>
-              <Link href={connHref('friends')} className="hover:text-brand">
-                <span className="font-medium text-slate-700">{friendCount}</span> friends
-              </Link>
-              <span>
-                <span className="font-medium text-slate-700">{list.length}</span> book{list.length === 1 ? '' : 's'}
-              </span>
+              <Link href={connHref('followers')} className="hover:text-brand"><span className="font-medium text-slate-700">{followerIds.length}</span> followers</Link>
+              <Link href={connHref('following')} className="hover:text-brand"><span className="font-medium text-slate-700">{followingSet.size}</span> following</Link>
+              <Link href={connHref('friends')} className="hover:text-brand"><span className="font-medium text-slate-700">{friendCount}</span> friends</Link>
+              <span><span className="font-medium text-slate-700">{list.length}</span> book{list.length === 1 ? '' : 's'}</span>
             </p>
-            {profile.bio && (
-              <p className="mt-2 whitespace-pre-wrap text-slate-700">{linkifyMentions(profile.bio, validMentions)}</p>
-            )}
+            {profile.bio && <p className="mt-2 whitespace-pre-wrap text-slate-700">{linkifyMentions(profile.bio, validMentions)}</p>}
             {(profile.website || profile.instagram || profile.twitter) && (
               <p className="mt-2 flex flex-wrap gap-3 text-sm">
                 {profile.website && <a href={profile.website} target="_blank" rel="noopener noreferrer" className="text-brand hover:underline">Website</a>}
@@ -207,9 +199,7 @@ export default async function ProfilePage({
             )}
             {favGenres.length > 0 && (
               <div className="mt-3 flex flex-wrap gap-2">
-                {favGenres.map((slug: string) => (
-                  <span key={slug} className="rounded-full bg-brand-soft px-3 py-1 text-xs font-medium text-brand">{genreName(slug)}</span>
-                ))}
+                {favGenres.map((slug: string) => <span key={slug} className="rounded-full bg-brand-soft px-3 py-1 text-xs font-medium text-brand">{genreName(slug)}</span>)}
               </div>
             )}
           </div>
@@ -222,9 +212,7 @@ export default async function ProfilePage({
             <form action={isFollowing ? unfollowUser : followUser}>
               <input type="hidden" name="followeeId" value={profile.id} />
               <input type="hidden" name="username" value={profile.username} />
-              <button className={isFollowing ? 'rounded-full border border-slate-300 px-4 py-1.5 text-sm font-medium text-slate-700 hover:bg-slate-100' : 'rounded-full bg-brand px-4 py-1.5 text-sm font-medium text-white hover:opacity-90'}>
-                {isFollowing ? 'Following' : 'Follow'}
-              </button>
+              <button className={isFollowing ? 'rounded-full border border-slate-300 px-4 py-1.5 text-sm font-medium text-slate-700 hover:bg-slate-100' : 'rounded-full bg-brand px-4 py-1.5 text-sm font-medium text-white hover:opacity-90'}>{isFollowing ? 'Following' : 'Follow'}</button>
             </form>
           </div>
         ) : null}
@@ -251,150 +239,168 @@ export default async function ProfilePage({
         </section>
       )}
 
-      {/* --- Tab bar --- */}
-      <div className="mt-8 flex flex-wrap gap-1 border-b border-stone-200 text-sm">
-        {TABS.map((t) => (
-          <Link
-            key={t}
-            href={tabHref(t)}
-            className={`-mb-px rounded-t-lg border-b-2 px-3 py-2 capitalize ${
-              tab === t ? 'border-brand font-medium text-brand' : 'border-transparent text-stone-500 hover:text-brand'
-            }`}
-          >
-            {t}
-          </Link>
-        ))}
-      </div>
+      {/* --- Main + shelf sidebar --- */}
+      <div className="mt-8 flex flex-col gap-6 md:flex-row">
+        <div className="min-w-0 flex-1">
+          {/* Tab bar */}
+          <div className="flex flex-wrap gap-1 border-b border-stone-200 text-sm">
+            {TAB_BAR.map((t) => (
+              <Link key={t} href={tabHref(t)} className={`-mb-px rounded-t-lg border-b-2 px-3 py-2 ${tab === t ? 'border-brand font-medium text-brand' : 'border-transparent text-stone-500 hover:text-brand'}`}>
+                {TAB_LABEL[t]}
+              </Link>
+            ))}
+          </div>
 
-      <div className="mt-5">
-        {/* POSTS */}
-        {tab === 'posts' && (
-          <section>
-            {isOwnProfile && !tagFilter && (
-              <div className="mb-4"><PostComposer /></div>
+          <div className="mt-5">
+            {/* POSTS (+ reposts) */}
+            {tab === 'posts' && (
+              <section>
+                {isOwnProfile && !tagFilter && <div className="mb-4"><PostComposer /></div>}
+                {topTags.length > 0 && (
+                  <div className="mb-4 flex flex-wrap items-center gap-2 text-xs text-stone-500">
+                    <span>Top tags:</span>
+                    {topTags.map((t) => (
+                      <Link key={t} href={`/u/${profile.username}?tab=posts&tag=${encodeURIComponent(t)}`} className={`rounded-full px-2 py-0.5 ${tagFilter === t ? 'bg-brand text-white' : 'bg-brand-soft text-brand hover:underline'}`}>#{t}</Link>
+                    ))}
+                    {tagFilter && <Link href={`/u/${profile.username}?tab=posts`} className="text-stone-400 hover:text-brand">clear ✕</Link>}
+                  </div>
+                )}
+                {feed.length === 0 ? (
+                  <p className="text-sm text-stone-500">{tagFilter ? `No posts tagged #${tagFilter}.` : 'No posts yet.'}</p>
+                ) : (
+                  <ul className="space-y-3">
+                    {feed.map((it: any) => (
+                      <li key={`${it.kind}-${it.post.id}`}>
+                        <PostCard
+                          post={it.post}
+                          author={it.kind === 'repost' ? repostAuthors.get(it.post.user_id) : undefined}
+                          showAuthor={it.kind === 'repost'}
+                          canDelete={isOwnProfile && it.kind === 'post'}
+                          repostedBy={it.kind === 'repost' ? profile.username : null}
+                        />
+                      </li>
+                    ))}
+                  </ul>
+                )}
+              </section>
             )}
-            {topTags.length > 0 && (
-              <div className="mb-4 flex flex-wrap items-center gap-2 text-xs text-stone-500">
-                <span>Top tags:</span>
-                {topTags.map((t) => (
-                  <Link key={t} href={`/u/${profile.username}?tab=posts&tag=${encodeURIComponent(t)}`} className={`rounded-full px-2 py-0.5 ${tagFilter === t ? 'bg-brand text-white' : 'bg-brand-soft text-brand hover:underline'}`}>#{t}</Link>
-                ))}
-                {tagFilter && <Link href={`/u/${profile.username}?tab=posts`} className="text-stone-400 hover:text-brand">clear ✕</Link>}
-              </div>
+
+            {/* LIKES */}
+            {tab === 'likes' && (
+              !canLikes ? (
+                <p className="text-sm text-stone-500">{profile.likes_visibility === 'friends' ? 'Likes are visible to friends only.' : 'Likes are private.'}</p>
+              ) : likeItems.posts.length === 0 ? (
+                <p className="text-sm text-stone-500">No liked posts yet.</p>
+              ) : (
+                <ul className="space-y-3">
+                  {likeItems.posts.map((p: any) => <li key={p.id}><PostCard post={p} author={likeItems.authors.get(p.user_id)} /></li>)}
+                </ul>
+              )
             )}
-            {posts.length === 0 ? (
-              <p className="text-sm text-stone-500">{tagFilter ? `No posts tagged #${tagFilter}.` : 'No posts yet.'}</p>
+
+            {/* REPLIES */}
+            {tab === 'replies' && (
+              !canReplies ? (
+                <p className="text-sm text-stone-500">{profile.comments_visibility === 'friends' ? 'Replies are visible to friends only.' : 'Replies are private.'}</p>
+              ) : replyItems.length === 0 ? (
+                <p className="text-sm text-stone-500">No replies yet.</p>
+              ) : (
+                <ul className="space-y-2">
+                  {replyItems.map((c: any) => {
+                    const owner = replyOwner.get(c.post_id);
+                    return (
+                      <li key={c.id} className="rounded-lg border border-stone-200 bg-white p-3 text-sm">
+                        <p className="text-stone-700">{c.body}</p>
+                        <p className="mt-1 text-xs text-stone-400">
+                          {owner ? <>on <Link href={`/u/${owner}`} className="hover:text-brand hover:underline">@{owner}</Link>&apos;s post · </> : null}
+                          {timeAgo(c.created_at)}
+                        </p>
+                      </li>
+                    );
+                  })}
+                </ul>
+              )
+            )}
+
+            {/* REVIEWS */}
+            {tab === 'reviews' && (
+              reviews.length === 0 ? (
+                <p className="text-sm text-stone-500">No reviews yet.</p>
+              ) : (
+                <ul className="space-y-3">
+                  {reviews.map((r: any) => (
+                    <li key={r.id} className="rounded-lg border border-stone-200 bg-white p-4">
+                      <div className="mb-1 flex items-center justify-between gap-2">
+                        <Link href={`/book/${r.book_id}`} className="text-sm font-semibold hover:text-brand hover:underline">{r.books?.title}</Link>
+                        <span className="flex-shrink-0 text-xs text-stone-400">{timeAgo(r.created_at)}</span>
+                      </div>
+                      <p className="whitespace-pre-wrap text-sm text-stone-700">{r.body.length > 240 ? r.body.slice(0, 240) + '…' : r.body}</p>
+                    </li>
+                  ))}
+                </ul>
+              )
+            )}
+
+            {/* SHELF (full, reached via "Visit shelf") */}
+            {tab === 'shelf' && (
+              list.length === 0 ? (
+                <p className="text-sm text-slate-500">No books on this shelf yet.</p>
+              ) : (
+                <div className="space-y-8">
+                  {grouped.map((group) => (
+                    <section key={group.status}>
+                      <h2 className="mb-3 text-sm font-semibold uppercase tracking-wide text-slate-400">{STATUS_LABEL[group.status]} ({group.items.length})</h2>
+                      <ul className="grid grid-cols-3 gap-3 sm:grid-cols-4 md:grid-cols-5">
+                        {group.items.map((e: any, i: number) => {
+                          const src = coverUrl(e.books?.cover_id, 'M');
+                          return (
+                            <li key={i}>
+                              <Link href={`/book/${e.book_id}`} className="group flex flex-col">
+                                <div className="aspect-[2/3] w-full overflow-hidden rounded bg-slate-100 group-hover:opacity-90">
+                                  {src && <Image src={src} alt={e.books?.title ?? ''} width={200} height={300} className="h-full w-full object-cover" />}
+                                </div>
+                                <p className="mt-1 truncate text-sm font-medium">{e.books?.title}</p>
+                                <p className="truncate text-xs text-slate-500">{e.books?.author}{e.rating ? ` · ${Number(e.rating).toFixed(1)}★` : ''}</p>
+                              </Link>
+                            </li>
+                          );
+                        })}
+                      </ul>
+                    </section>
+                  ))}
+                </div>
+              )
+            )}
+          </div>
+        </div>
+
+        {/* Shelf preview sidebar */}
+        <aside className="md:w-44 md:flex-shrink-0">
+          <div className="rounded-lg border border-stone-200 bg-white p-3">
+            <div className="mb-2 flex items-center justify-between">
+              <h3 className="text-sm font-semibold text-stone-700">Shelf</h3>
+              <Link href={`/u/${profile.username}?tab=shelf`} className="text-xs text-brand hover:underline">Visit shelf →</Link>
+            </div>
+            {list.length === 0 ? (
+              <p className="text-xs text-stone-400">No books yet.</p>
             ) : (
-              <ul className="space-y-3">
-                {posts.map((p: any) => (
-                  <li key={p.id}><PostCard post={p} canDelete={isOwnProfile} showAuthor={false} /></li>
-                ))}
+              <ul className="grid grid-cols-3 gap-1.5">
+                {list.slice(0, 6).map((e: any, i: number) => {
+                  const src = coverUrl(e.books?.cover_id, 'M');
+                  return (
+                    <li key={i}>
+                      <Link href={`/book/${e.book_id}`} title={e.books?.title} className="block">
+                        <div className="aspect-[2/3] w-full overflow-hidden rounded bg-slate-100 hover:opacity-90">
+                          {src && <Image src={src} alt={e.books?.title ?? ''} width={120} height={180} className="h-full w-full object-cover" />}
+                        </div>
+                      </Link>
+                    </li>
+                  );
+                })}
               </ul>
             )}
-          </section>
-        )}
-
-        {/* REPOSTS */}
-        {tab === 'reposts' && (
-          repostItems.posts.length === 0 ? (
-            <p className="text-sm text-stone-500">No reposts yet.</p>
-          ) : (
-            <ul className="space-y-3">
-              {repostItems.posts.map((p: any) => (
-                <li key={p.id}><PostCard post={p} author={repostItems.authors.get(p.user_id)} repostedBy={profile.username} /></li>
-              ))}
-            </ul>
-          )
-        )}
-
-        {/* LIKES */}
-        {tab === 'likes' && (
-          !canLikes ? (
-            <p className="text-sm text-stone-500">{profile.likes_visibility === 'friends' ? 'Likes are visible to friends only.' : 'Likes are private.'}</p>
-          ) : likeItems.posts.length === 0 ? (
-            <p className="text-sm text-stone-500">No liked posts yet.</p>
-          ) : (
-            <ul className="space-y-3">
-              {likeItems.posts.map((p: any) => (
-                <li key={p.id}><PostCard post={p} author={likeItems.authors.get(p.user_id)} /></li>
-              ))}
-            </ul>
-          )
-        )}
-
-        {/* COMMENTS */}
-        {tab === 'comments' && (
-          !canComments ? (
-            <p className="text-sm text-stone-500">{profile.comments_visibility === 'friends' ? 'Comments are visible to friends only.' : 'Comments are private.'}</p>
-          ) : commentItems.length === 0 ? (
-            <p className="text-sm text-stone-500">No comments yet.</p>
-          ) : (
-            <ul className="space-y-2">
-              {commentItems.map((c: any) => {
-                const owner = commentOwner.get(c.post_id);
-                return (
-                  <li key={c.id} className="rounded-lg border border-stone-200 bg-white p-3 text-sm">
-                    <p className="text-stone-700">{c.body}</p>
-                    <p className="mt-1 text-xs text-stone-400">
-                      {owner ? <>on <Link href={`/u/${owner}`} className="hover:text-brand hover:underline">@{owner}</Link>&apos;s post · </> : null}
-                      {timeAgo(c.created_at)}
-                    </p>
-                  </li>
-                );
-              })}
-            </ul>
-          )
-        )}
-
-        {/* REVIEWS */}
-        {tab === 'reviews' && (
-          reviews.length === 0 ? (
-            <p className="text-sm text-stone-500">No reviews yet.</p>
-          ) : (
-            <ul className="space-y-3">
-              {reviews.map((r: any) => (
-                <li key={r.id} className="rounded-lg border border-stone-200 bg-white p-4">
-                  <div className="mb-1 flex items-center justify-between gap-2">
-                    <Link href={`/book/${r.book_id}`} className="text-sm font-semibold hover:text-brand hover:underline">{r.books?.title}</Link>
-                    <span className="flex-shrink-0 text-xs text-stone-400">{timeAgo(r.created_at)}</span>
-                  </div>
-                  <p className="whitespace-pre-wrap text-sm text-stone-700">{r.body.length > 240 ? r.body.slice(0, 240) + '…' : r.body}</p>
-                </li>
-              ))}
-            </ul>
-          )
-        )}
-
-        {/* SHELF */}
-        {tab === 'shelf' && (
-          list.length === 0 ? (
-            <p className="text-sm text-slate-500">No books on this shelf yet.</p>
-          ) : (
-            <div className="space-y-8">
-              {grouped.map((group) => (
-                <section key={group.status}>
-                  <h2 className="mb-3 text-sm font-semibold uppercase tracking-wide text-slate-400">{STATUS_LABEL[group.status]} ({group.items.length})</h2>
-                  <ul className="grid grid-cols-3 gap-3 sm:grid-cols-4 md:grid-cols-5">
-                    {group.items.map((e: any, i: number) => {
-                      const src = coverUrl(e.books?.cover_id, 'M');
-                      return (
-                        <li key={i}>
-                          <Link href={`/book/${e.book_id}`} className="group flex flex-col">
-                            <div className="aspect-[2/3] w-full overflow-hidden rounded bg-slate-100 group-hover:opacity-90">
-                              {src && <Image src={src} alt={e.books?.title ?? ''} width={200} height={300} className="h-full w-full object-cover" />}
-                            </div>
-                            <p className="mt-1 truncate text-sm font-medium">{e.books?.title}</p>
-                            <p className="truncate text-xs text-slate-500">{e.books?.author}{e.rating ? ` · ${Number(e.rating).toFixed(1)}★` : ''}</p>
-                          </Link>
-                        </li>
-                      );
-                    })}
-                  </ul>
-                </section>
-              ))}
-            </div>
-          )
-        )}
+          </div>
+        </aside>
       </div>
     </div>
   );
