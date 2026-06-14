@@ -218,30 +218,60 @@ export default async function ProfilePage({
         ) : null}
       </div>
 
-      {/* --- Favourites (Top 4) --- */}
-      {favs.length > 0 && (
-        <section className="mt-8">
-          <h2 className="mb-3 text-sm font-semibold uppercase tracking-wide text-slate-400">Favourites</h2>
-          <ul className="grid grid-cols-4 gap-3 sm:max-w-md">
-            {favs.map((f: any) => {
-              const src = coverUrl(f.books?.cover_id, 'M');
-              return (
-                <li key={f.position}>
-                  <Link href={`/book/${f.book_id}`} className="group block">
-                    <div className="aspect-[2/3] w-full overflow-hidden rounded bg-slate-100 group-hover:opacity-90">
-                      {src && <Image src={src} alt={f.books?.title ?? ''} width={200} height={300} className="h-full w-full object-cover" />}
-                    </div>
-                  </Link>
-                </li>
-              );
-            })}
-          </ul>
-        </section>
-      )}
-
-      {/* --- Main + shelf sidebar --- */}
-      <div className="mt-8 flex flex-col gap-6 md:flex-row">
+      {/* --- Favourites + Shelf (same line) --- */}
+      <div className="mt-8 flex flex-col gap-6 sm:flex-row sm:items-start">
         <div className="min-w-0 flex-1">
+          {favs.length > 0 && (
+            <section>
+              <h2 className="mb-3 text-sm font-semibold uppercase tracking-wide text-slate-400">Favourites</h2>
+              <ul className="grid max-w-md grid-cols-4 gap-3">
+                {favs.map((f: any) => {
+                  const src = coverUrl(f.books?.cover_id, 'M');
+                  return (
+                    <li key={f.position}>
+                      <Link href={`/book/${f.book_id}`} className="group block">
+                        <div className="aspect-[2/3] w-full overflow-hidden rounded bg-slate-100 group-hover:opacity-90">
+                          {src && <Image src={src} alt={f.books?.title ?? ''} width={200} height={300} className="h-full w-full object-cover" />}
+                        </div>
+                      </Link>
+                    </li>
+                  );
+                })}
+              </ul>
+            </section>
+          )}
+        </div>
+        <aside className="sm:w-44 sm:flex-shrink-0">
+          <div className="rounded-lg border border-stone-200 bg-white p-3">
+            <div className="mb-2 flex items-center justify-between">
+              <h3 className="text-sm font-semibold text-stone-700">Shelf</h3>
+              <Link href={`/u/${profile.username}?tab=shelf`} className="text-xs text-brand hover:underline">Visit shelf →</Link>
+            </div>
+            {list.length === 0 ? (
+              <p className="text-xs text-stone-400">No books yet.</p>
+            ) : (
+              <ul className="grid grid-cols-3 gap-1.5">
+                {list.slice(0, 6).map((e: any, i: number) => {
+                  const src = coverUrl(e.books?.cover_id, 'M');
+                  return (
+                    <li key={i}>
+                      <Link href={`/book/${e.book_id}`} title={e.books?.title} className="block">
+                        <div className="aspect-[2/3] w-full overflow-hidden rounded bg-slate-100 hover:opacity-90">
+                          {src && <Image src={src} alt={e.books?.title ?? ''} width={120} height={180} className="h-full w-full object-cover" />}
+                        </div>
+                      </Link>
+                    </li>
+                  );
+                })}
+              </ul>
+            )}
+          </div>
+        </aside>
+      </div>
+
+      {/* --- Tabs --- */}
+      <div className="mt-8">
+        <div className="min-w-0">
           {/* Tab bar */}
           <div className="flex flex-wrap gap-1 border-b border-stone-200 text-sm">
             {TAB_BAR.map((t) => (
@@ -373,34 +403,6 @@ export default async function ProfilePage({
             )}
           </div>
         </div>
-
-        {/* Shelf preview sidebar */}
-        <aside className="md:w-44 md:flex-shrink-0">
-          <div className="rounded-lg border border-stone-200 bg-white p-3">
-            <div className="mb-2 flex items-center justify-between">
-              <h3 className="text-sm font-semibold text-stone-700">Shelf</h3>
-              <Link href={`/u/${profile.username}?tab=shelf`} className="text-xs text-brand hover:underline">Visit shelf →</Link>
-            </div>
-            {list.length === 0 ? (
-              <p className="text-xs text-stone-400">No books yet.</p>
-            ) : (
-              <ul className="grid grid-cols-3 gap-1.5">
-                {list.slice(0, 6).map((e: any, i: number) => {
-                  const src = coverUrl(e.books?.cover_id, 'M');
-                  return (
-                    <li key={i}>
-                      <Link href={`/book/${e.book_id}`} title={e.books?.title} className="block">
-                        <div className="aspect-[2/3] w-full overflow-hidden rounded bg-slate-100 hover:opacity-90">
-                          {src && <Image src={src} alt={e.books?.title ?? ''} width={120} height={180} className="h-full w-full object-cover" />}
-                        </div>
-                      </Link>
-                    </li>
-                  );
-                })}
-              </ul>
-            )}
-          </div>
-        </aside>
       </div>
     </div>
   );
