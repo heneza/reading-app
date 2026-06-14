@@ -7,6 +7,7 @@ import { followUser, unfollowUser } from '@/app/actions/follows';
 import { genreName } from '@/lib/genres';
 import { timeAgo } from '@/lib/time';
 import Avatar from '@/components/Avatar';
+import ShareButton from '@/components/ShareButton';
 import PostComposer from '@/components/PostComposer';
 import PostCard from '@/components/PostCard';
 
@@ -48,7 +49,7 @@ export default async function ProfilePage({
   searchParams,
 }: {
   params: { username: string };
-  searchParams: { tag?: string; tab?: string };
+  searchParams: { tag?: string; tab?: string; all?: string };
 }) {
   const supabase = createClient();
   const {
@@ -191,10 +192,18 @@ export default async function ProfilePage({
             </p>
             {profile.bio && <p className="mt-2 whitespace-pre-wrap text-slate-700">{linkifyMentions(profile.bio, validMentions)}</p>}
             {(profile.website || profile.instagram || profile.twitter) && (
-              <p className="mt-2 flex flex-wrap gap-3 text-sm">
+              <p className="mt-2 flex flex-wrap items-center gap-3 text-sm">
                 {profile.website && <a href={profile.website} target="_blank" rel="noopener noreferrer" className="text-brand hover:underline">Website</a>}
-                {profile.instagram && <a href={`https://instagram.com/${profile.instagram}`} target="_blank" rel="noopener noreferrer" className="text-brand hover:underline">Instagram</a>}
-                {profile.twitter && <a href={`https://x.com/${profile.twitter}`} target="_blank" rel="noopener noreferrer" className="text-brand hover:underline">X</a>}
+                {profile.instagram && (
+                  <a href={`https://instagram.com/${profile.instagram}`} target="_blank" rel="noopener noreferrer" aria-label="Instagram" className="text-brand hover:opacity-70">
+                    <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><rect x="2" y="2" width="20" height="20" rx="5" /><circle cx="12" cy="12" r="4" /><circle cx="17.5" cy="6.5" r="1.2" fill="currentColor" stroke="none" /></svg>
+                  </a>
+                )}
+                {profile.twitter && (
+                  <a href={`https://x.com/${profile.twitter}`} target="_blank" rel="noopener noreferrer" aria-label="X" className="text-brand hover:opacity-70">
+                    <svg width="16" height="16" viewBox="0 0 24 24" fill="currentColor"><path d="M18.244 2.25h3.308l-7.227 8.26 8.502 11.24h-6.66l-5.214-6.817L4.99 21.75H1.68l7.73-8.835L1.254 2.25H8.08l4.713 6.231zm-1.161 17.52h1.833L7.084 4.126H5.117z" /></svg>
+                  </a>
+                )}
               </p>
             )}
             {favGenres.length > 0 && (
@@ -204,18 +213,21 @@ export default async function ProfilePage({
             )}
           </div>
         </div>
-        {isOwnProfile ? (
-          <Link href="/settings/profile" className="whitespace-nowrap rounded-full border border-slate-300 px-4 py-1.5 text-sm font-medium text-slate-700 hover:bg-slate-100">Edit profile</Link>
-        ) : user ? (
-          <div className="flex flex-shrink-0 items-center gap-2">
-            <Link href={`/messages/${profile.username}`} className="whitespace-nowrap rounded-full border border-slate-300 px-4 py-1.5 text-sm font-medium text-slate-700 hover:bg-slate-100">Message</Link>
-            <form action={isFollowing ? unfollowUser : followUser}>
-              <input type="hidden" name="followeeId" value={profile.id} />
-              <input type="hidden" name="username" value={profile.username} />
-              <button className={isFollowing ? 'rounded-full border border-slate-300 px-4 py-1.5 text-sm font-medium text-slate-700 hover:bg-slate-100' : 'rounded-full bg-brand px-4 py-1.5 text-sm font-medium text-white hover:opacity-90'}>{isFollowing ? 'Following' : 'Follow'}</button>
-            </form>
-          </div>
-        ) : null}
+        <div className="flex flex-shrink-0 items-center gap-2">
+          <ShareButton username={profile.username} />
+          {isOwnProfile ? (
+            <Link href="/settings/profile" className="whitespace-nowrap rounded-full border border-slate-300 px-4 py-1.5 text-sm font-medium text-slate-700 hover:bg-slate-100">Edit profile</Link>
+          ) : user ? (
+            <>
+              <Link href={`/messages/${profile.username}`} className="whitespace-nowrap rounded-full border border-slate-300 px-4 py-1.5 text-sm font-medium text-slate-700 hover:bg-slate-100">Message</Link>
+              <form action={isFollowing ? unfollowUser : followUser}>
+                <input type="hidden" name="followeeId" value={profile.id} />
+                <input type="hidden" name="username" value={profile.username} />
+                <button className={isFollowing ? 'rounded-full border border-slate-300 px-4 py-1.5 text-sm font-medium text-slate-700 hover:bg-slate-100' : 'rounded-full bg-brand px-4 py-1.5 text-sm font-medium text-white hover:opacity-90'}>{isFollowing ? 'Following' : 'Follow'}</button>
+              </form>
+            </>
+          ) : null}
+        </div>
       </div>
 
       {/* --- Favourites + Shelf (same line) --- */}
@@ -377,11 +389,14 @@ export default async function ProfilePage({
                 <p className="text-sm text-slate-500">No books on this shelf yet.</p>
               ) : (
                 <div className="space-y-8">
-                  {grouped.map((group) => (
+                  {grouped.map((group) => {
+                    const expanded = searchParams?.all === group.status;
+                    const shelfItems = expanded ? group.items : group.items.slice(0, 5);
+                    return (
                     <section key={group.status}>
                       <h2 className="mb-3 text-sm font-semibold uppercase tracking-wide text-slate-400">{STATUS_LABEL[group.status]} ({group.items.length})</h2>
                       <ul className="grid grid-cols-3 gap-3 sm:grid-cols-4 md:grid-cols-5">
-                        {group.items.map((e: any, i: number) => {
+                        {shelfItems.map((e: any, i: number) => {
                           const src = coverUrl(e.books?.cover_id, 'M');
                           return (
                             <li key={i}>
@@ -390,14 +405,20 @@ export default async function ProfilePage({
                                   {src && <Image src={src} alt={e.books?.title ?? ''} width={200} height={300} className="h-full w-full object-cover" />}
                                 </div>
                                 <p className="mt-1 truncate text-sm font-medium">{e.books?.title}</p>
-                                <p className="truncate text-xs text-slate-500">{e.books?.author}{e.rating ? ` · ${Number(e.rating).toFixed(1)}★` : ''}</p>
+                                <p className="truncate text-xs text-slate-500">{e.books?.author}{e.rating ? ` · ${Number(e.rating)}★` : ''}</p>
                               </Link>
                             </li>
                           );
                         })}
                       </ul>
+                      {group.items.length > 5 && (
+                        <Link href={`/u/${profile.username}?tab=shelf${expanded ? '' : `&all=${group.status}`}`} className="mt-2 inline-block text-sm text-brand hover:underline">
+                          {expanded ? 'Show less' : `See all (${group.items.length}) →`}
+                        </Link>
+                      )}
                     </section>
-                  ))}
+                    );
+                  })}
                 </div>
               )
             )}

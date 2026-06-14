@@ -2,9 +2,8 @@ import Image from 'next/image';
 import Link from 'next/link';
 import { notFound } from 'next/navigation';
 import { createClient } from '@/utils/supabase/server';
-import { coverUrl } from '@/lib/openlibrary';
+import { coverUrl, fetchDescription } from '@/lib/openlibrary';
 import {
-  saveRating,
   reactToReview,
   addReviewComment,
   deleteReviewComment,
@@ -14,9 +13,8 @@ import ReviewItem from './ReviewItem';
 import { removeFromShelf } from '@/app/actions/shelf';
 import { classifyBook } from '@/app/actions/genres';
 import { genreName } from '@/lib/genres';
+import StarRating from '@/components/StarRating';
 import { timeAgo } from '@/lib/time';
-
-const RATING_OPTIONS = Array.from({ length: 10 }, (_, i) => (i + 1) * 0.5);
 
 // Always render fresh (no caching) so data and login state are current.
 export const dynamic = 'force-dynamic';
@@ -28,6 +26,8 @@ export default async function BookPage({ params }: { params: { id: string } }) {
   const { data: book } = await supabase
     .from('books').select('id, title, author, cover_id, ol_key').eq('id', params.id).single();
   if (!book) notFound();
+
+  const description = await fetchDescription(book.ol_key);
 
   let myRating: number | null = null;
   let onShelf = false;
@@ -115,16 +115,16 @@ export default async function BookPage({ params }: { params: { id: string } }) {
               ))}
             </div>
           )}
+          {description && (
+            <p className="mb-4 whitespace-pre-line text-sm leading-relaxed text-slate-600">
+              {description.length > 600 ? description.slice(0, 600).trimEnd() + '…' : description}
+            </p>
+          )}
           {user ? (
-            <form action={saveRating} className="flex items-center gap-2">
-              <input type="hidden" name="bookId" value={book.id} />
-              <label className="text-sm text-slate-600">Your rating:</label>
-              <select name="rating" defaultValue={myRating ?? ''} className="min-w-[4.5rem]">
-                <option value="">—</option>
-                {RATING_OPTIONS.map((r) => <option key={r} value={r}>{r.toFixed(1)} ★</option>)}
-              </select>
-              <button className="rounded bg-brand px-4 py-2 text-sm font-medium text-white transition hover:bg-brand-dark">Save</button>
-            </form>
+            <div className="flex items-center gap-2">
+              <span className="text-sm text-slate-600">Your rating:</span>
+              <StarRating bookId={book.id} initial={myRating} />
+            </div>
           ) : (
             <p className="text-sm text-slate-400">Log in to rate this book.</p>
           )}

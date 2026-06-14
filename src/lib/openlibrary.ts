@@ -97,3 +97,19 @@ export async function lookupByIsbn(
     return null;
   }
 }
+
+// Fetch a work's description (string or { value }).
+export async function fetchDescription(workKey: string): Promise<string> {
+  if (!workKey || !workKey.includes('/works/')) return '';
+  const key = workKey.startsWith('/') ? workKey : `/${workKey}`;
+  try {
+    const res = await fetch(`https://openlibrary.org${key}.json`, { cache: 'no-store' });
+    if (!res.ok) return '';
+    const d = await res.json();
+    const desc = d?.description;
+    if (!desc) return '';
+    return typeof desc === 'string' ? desc : String(desc.value ?? '');
+  } catch {
+    return '';
+  }
+}

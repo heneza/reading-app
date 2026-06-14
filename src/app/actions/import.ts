@@ -13,11 +13,14 @@ export type GoodreadsRow = {
   review: string;
 };
 
-const SHELF_MAP: Record<string, string> = {
-  read: 'read',
-  'currently-reading': 'reading',
-  'to-read': 'want_to_read',
-};
+function mapStatus(raw: string): string {
+  const s = (raw || '').toLowerCase().trim().replace(/\s+/g, '-');
+  if (s === 'read') return 'read';
+  if (s.includes('currently') || s === 'reading') return 'reading';
+  if (s.includes('did-not-finish') || s === 'dnf' || s.includes('didnt') || s.includes('abandon')) return 'dnf';
+  if (s.includes('to-read') || s.includes('want')) return 'want_to_read';
+  return 'want_to_read';
+}
 
 function syntheticKey(title: string, author: string) {
   return ('gr:' + `${title}-${author}`.toLowerCase().replace(/[^a-z0-9]+/g, '-')).slice(0, 180);
@@ -44,7 +47,7 @@ export async function importGoodreadsBatch(
       skipped++;
       continue;
     }
-    const status = SHELF_MAP[r.shelf] ?? 'want_to_read';
+    const status = mapStatus(r.shelf);
 
     // Match against Open Library: ISBN first, then title/author search.
     let ol = r.isbn ? await lookupByIsbn(r.isbn) : null;
@@ -85,7 +88,17 @@ export async function importGoodreadsBatch(
       .upsert({ user_id: user.id, book_id: book.id, status, rating }, { onConflict: 'user_id,book_id' });
 
     if (withReviews && r.review) {
-      await supabase.from('reviews').insert({ user_id: user.id, book_id: book.id, body: r.review });
+      // Skip if the same review already exists, so re-imports don't duplicate.
+      const { data: existingReview } = await supabase
+        .from('reviews')
+        .select('id')
+        .eq('user_id', user.id)
+        .eq('book_id', book.id)
+        .eq('body', r.review)
+        .maybeSingle();
+      if (!existingReview) {
+        await supabase.from('reviews').insert({ user_id: user.id, book_id: book.id, body: r.review });
+      }
     }
     imported++;
   }

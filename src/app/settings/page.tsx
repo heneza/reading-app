@@ -102,8 +102,8 @@ export default async function SettingsPage() {
       <section>
         <h2 className={sectionH}>Import</h2>
         <div className="rounded-lg border border-stone-200 bg-white p-4 text-sm">
-          <Link href="/settings/import" className="font-medium text-brand hover:underline">Import your Goodreads library →</Link>
-          <p className="mt-1 text-stone-500">Bring your shelves, ratings and reviews over from a Goodreads CSV export.</p>
+          <Link href="/settings/import" className="font-medium text-brand hover:underline">Import from Goodreads, StoryGraph or Hardcover →</Link>
+          <p className="mt-1 text-stone-500">Bring your shelves, ratings and reviews over from a CSV (Goodreads, StoryGraph) or JSON (Hardcover) export.</p>
         </div>
       </section>
 

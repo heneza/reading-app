@@ -21,6 +21,17 @@ export async function saveRating(formData: FormData) {
   revalidatePath(`/book/${bookId}`);
 }
 
+// Set a 0.25-step star rating from the interactive widget. null = clear.
+export async function rateBook(bookId: string, rating: number | null): Promise<void> {
+  const supabase = createClient();
+  const { data: { user } } = await supabase.auth.getUser();
+  if (!user) return;
+  await supabase
+    .from('reading_entries')
+    .upsert({ user_id: user.id, book_id: bookId, rating }, { onConflict: 'user_id,book_id' });
+  revalidatePath(`/book/${bookId}`);
+}
+
 // --- Reviews ----------------------------------------------------------
 // Create a new review, or update an existing one when reviewId is given.
 // Returns { error } (string or null) so the client form can show failures
