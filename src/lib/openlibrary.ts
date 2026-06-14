@@ -68,6 +68,7 @@ export function coverUrl(coverId?: number | null, size: 'S' | 'M' | 'L' = 'M') {
 // `workKey` looks like "/works/OL12345W".
 export async function fetchSubjects(workKey: string): Promise<string[]> {
   const key = workKey.startsWith('/') ? workKey : `/${workKey}`;
+  if (!/^\/works\/OL\d+W$/.test(key)) return []; // guard against SSRF via crafted keys
   try {
     const res = await fetch(`https://openlibrary.org${key}.json`, { cache: 'no-store' });
     if (!res.ok) return [];
@@ -100,8 +101,9 @@ export async function lookupByIsbn(
 
 // Fetch a work's description (string or { value }).
 export async function fetchDescription(workKey: string): Promise<string> {
-  if (!workKey || !workKey.includes('/works/')) return '';
+  if (!workKey) return '';
   const key = workKey.startsWith('/') ? workKey : `/${workKey}`;
+  if (!/^\/works\/OL\d+W$/.test(key)) return ''; // guard against SSRF via crafted keys
   try {
     const res = await fetch(`https://openlibrary.org${key}.json`, { cache: 'no-store' });
     if (!res.ok) return '';

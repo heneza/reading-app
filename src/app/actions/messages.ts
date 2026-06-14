@@ -22,7 +22,7 @@ export async function sendMessage(
   const { error } = await supabase
     .from('messages')
     .insert({ sender_id: user.id, recipient_id: recipientId, body: text });
-  if (error) return { error: error.message };
+  if (error) return { error: 'Something went wrong. Please try again.' };
 
   revalidatePath('/messages');
   return { error: null };
@@ -46,7 +46,7 @@ export async function editMessage(
     .update({ body: text, edited_at: new Date().toISOString() })
     .eq('id', id)
     .eq('sender_id', user.id);
-  if (error) return { error: error.message };
+  if (error) return { error: 'Something went wrong. Please try again.' };
 
   revalidatePath('/messages');
   return { error: null };
@@ -65,7 +65,7 @@ export async function deleteMessage(id: string): Promise<{ error: string | null 
     .delete()
     .eq('id', id)
     .eq('sender_id', user.id);
-  if (error) return { error: error.message };
+  if (error) return { error: 'Something went wrong. Please try again.' };
 
   revalidatePath('/messages');
   return { error: null };
@@ -83,7 +83,7 @@ export async function setReadReceipts(on: boolean): Promise<{ error: string | nu
     .from('profiles')
     .update({ read_receipts: on })
     .eq('id', user.id);
-  if (error) return { error: error.message };
+  if (error) return { error: 'Something went wrong. Please try again.' };
 
   revalidatePath('/settings');
   return { error: null };

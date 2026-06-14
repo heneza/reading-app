@@ -1,3 +1,4 @@
+import { sanitizePostHtml } from '@/lib/sanitize';
 import Link from 'next/link';
 import Avatar from '@/components/Avatar';
 import { timeAgo } from '@/lib/time';
@@ -88,7 +89,7 @@ export default async function PostCard({
         )}
       </div>
 
-      <div className="post-body text-stone-800" dangerouslySetInnerHTML={{ __html: post.body_html }} />
+      <div className="post-body text-stone-800" dangerouslySetInnerHTML={{ __html: sanitizePostHtml(post.body_html ?? '') }} />
 
       {post.tags?.length > 0 && (
         <div className="mt-3 flex flex-wrap gap-x-3 gap-y-1">

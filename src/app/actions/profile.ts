@@ -11,6 +11,24 @@ function clean(v: FormDataEntryValue | null): string | null {
   return s === '' ? null : s;
 }
 
+// Only accept http(s) URLs (blocks javascript: / data: URI injection).
+function cleanUrl(v: FormDataEntryValue | null): string | null {
+  const s = String(v ?? '').trim();
+  if (!s) return null;
+  return /^https?:\/\//i.test(s) ? s.slice(0, 300) : null;
+}
+
+// Social handles: strip to a safe charset so they can't break out of the URL.
+function cleanHandle(v: FormDataEntryValue | null): string | null {
+  const s = String(v ?? '').trim().replace(/^@/, '').replace(/[^A-Za-z0-9_.]/g, '');
+  return s ? s.slice(0, 40) : null;
+}
+
+function clampText(v: FormDataEntryValue | null, max: number): string | null {
+  const s = clean(v);
+  return s ? s.slice(0, max) : null;
+}
+
 export async function updateProfile(formData: FormData) {
   const supabase = createClient();
   const {
@@ -21,11 +39,11 @@ export async function updateProfile(formData: FormData) {
   await supabase
     .from('profiles')
     .update({
-      display_name: clean(formData.get('display_name')),
-      bio: clean(formData.get('bio')),
-      website: clean(formData.get('website')),
-      twitter: clean(formData.get('twitter')),
-      instagram: clean(formData.get('instagram')),
+      display_name: clampText(formData.get('display_name'), 80),
+      bio: clampText(formData.get('bio'), 500),
+      website: cleanUrl(formData.get('website')),
+      twitter: cleanHandle(formData.get('twitter')),
+      instagram: cleanHandle(formData.get('instagram')),
     })
     .eq('id', user.id);
 
