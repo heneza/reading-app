@@ -2,7 +2,9 @@ import Image from 'next/image';
 import Link from 'next/link';
 import { notFound } from 'next/navigation';
 import { createClient } from '@/utils/supabase/server';
-import { coverUrl, fetchDescription } from '@/lib/openlibrary';
+import { Suspense } from 'react';
+import { coverUrl } from '@/lib/openlibrary';
+import BookDescription from './BookDescription';
 import {
   reactToReview,
   addReviewComment,
@@ -14,7 +16,6 @@ import { removeFromShelf } from '@/app/actions/shelf';
 import { logRead, deleteDiaryEntry } from '@/app/actions/diary';
 import { addContentWarning, removeContentWarning } from '@/app/actions/content-warnings';
 import { addBookToList } from '@/app/actions/lists';
-import { classifyBook } from '@/app/actions/genres';
 import { genreName } from '@/lib/genres';
 import StarRating from '@/components/StarRating';
 import { timeAgo, formatDate } from '@/lib/time';
@@ -30,98 +31,49 @@ export default async function BookPage({ params }: { params: { id: string } }) {
     .from('books').select('id, title, author, cover_id, ol_key, description').eq('id', params.id).single();
   if (!book) notFound();
 
-  // Description: use the cached copy; only hit Open Library the first time.
-  let description: string = book.description ?? '';
-  if (!description && book.ol_key) {
-    description = await fetchDescription(book.ol_key);
-    if (description && user) {
-      await supabase.from('books').update({ description }).eq('id', book.id);
-    }
-  }
   const today = new Date().toISOString().slice(0, 10);
 
-  let myRating: number | null = null;
-  let onShelf = false;
-  if (user) {
-    const { data: entry } = await supabase
-      .from('reading_entries').select('rating')
-      .eq('user_id', user.id).eq('book_id', book.id).maybeSingle();
-    myRating = entry?.rating ?? null;
-    onShelf = !!entry;
+  // Fetch everything the page needs in parallel (one round-trip, not six).
+  const [entryRes, diaryRes, cwRes, genresRes, listsRes, reviewsRes] = await Promise.all([
+    user
+      ? supabase.from('reading_entries').select('rating').eq('user_id', user.id).eq('book_id', book.id).maybeSingle()
+      : Promise.resolve({ data: null as any }),
+    user
+      ? supabase.from('diary_entries').select('id, read_on, rating, note, is_reread').eq('user_id', user.id).eq('book_id', book.id).order('read_on', { ascending: false }).order('created_at', { ascending: false })
+      : Promise.resolve({ data: [] as any[] }),
+    supabase.from('content_warnings').select('warning, user_id').eq('book_id', book.id),
+    supabase.from('book_genres').select('genre').eq('book_id', book.id),
+    user
+      ? supabase.from('lists').select('id, title').eq('owner_id', user.id).order('created_at', { ascending: false })
+      : Promise.resolve({ data: [] as any[] }),
+    supabase.from('reviews').select('id, user_id, body, spoiler, created_at').eq('book_id', book.id).order('created_at', { ascending: false }),
+  ]);
+
+  const myRating: number | null = entryRes.data?.rating ?? null;
+  const onShelf = !!entryRes.data;
+  const myDiary: any[] = diaryRes.data ?? [];
+  const bookGenres: string[] = ((genresRes.data ?? []) as any[]).map((r: any) => r.genre);
+  const myLists: { id: string; title: string }[] = (listsRes.data ?? []) as any;
+  const reviewList = reviewsRes.data ?? [];
+  const reviewsError = reviewsRes.error ?? null;
+
+  // Which of my lists already contain this book.
+  const inLists = new Set<string>();
+  if (myLists.length) {
+    const { data: li } = await supabase.from('list_items').select('list_id').eq('book_id', book.id).in('list_id', myLists.map((l) => l.id));
+    (li ?? []).forEach((r: any) => inLists.add(r.list_id));
   }
 
-  // This user's diary entries for this book (most recent read first).
-  let myDiary: any[] = [];
-  if (user) {
-    const { data: de } = await supabase
-      .from('diary_entries')
-      .select('id, read_on, rating, note, is_reread')
-      .eq('user_id', user.id)
-      .eq('book_id', book.id)
-      .order('read_on', { ascending: false })
-      .order('created_at', { ascending: false });
-    myDiary = de ?? [];
-  }
-
-  // Content warnings (community-contributed): aggregate distinct warnings.
-  const { data: cwRows } = await supabase
-    .from('content_warnings')
-    .select('warning, user_id')
-    .eq('book_id', book.id);
+  // Content warnings — aggregate distinct warnings.
   const cwAgg = new Map<string, { count: number; mine: boolean }>();
-  (cwRows ?? []).forEach((r: any) => {
+  ((cwRes.data ?? []) as any[]).forEach((r: any) => {
     const cur = cwAgg.get(r.warning) ?? { count: 0, mine: false };
     cur.count += 1;
     if (r.user_id === user?.id) cur.mine = true;
     cwAgg.set(r.warning, cur);
   });
-  const warnings = Array.from(cwAgg.entries())
-    .map(([warning, v]) => ({ warning, count: v.count, mine: v.mine }))
-    .sort((a, b) => b.count - a.count);
+  const warnings = Array.from(cwAgg.entries()).map(([warning, v]) => ({ warning, count: v.count, mine: v.mine })).sort((a, b) => b.count - a.count);
 
-  // The signed-in user's lists + which already contain this book.
-  let myLists: { id: string; title: string }[] = [];
-  const inLists = new Set<string>();
-  if (user) {
-    const { data: ml } = await supabase
-      .from('lists')
-      .select('id, title')
-      .eq('owner_id', user.id)
-      .order('created_at', { ascending: false });
-    myLists = ml ?? [];
-    if (myLists.length) {
-      const { data: li } = await supabase
-        .from('list_items')
-        .select('list_id')
-        .eq('book_id', book.id)
-        .in('list_id', myLists.map((l) => l.id));
-      (li ?? []).forEach((r: any) => inLists.add(r.list_id));
-    }
-  }
-
-  // Genres for this book — classify on first view if not done yet.
-  let bookGenres: string[] = [];
-  {
-    const { data: bg } = await supabase
-      .from('book_genres')
-      .select('genre')
-      .eq('book_id', book.id);
-    bookGenres = (bg ?? []).map((r: any) => r.genre);
-    if (bookGenres.length === 0 && user && book.ol_key) {
-      try {
-        bookGenres = await classifyBook(book.id, book.ol_key);
-      } catch {
-        /* non-critical */
-      }
-    }
-  }
-
-  const { data: reviews, error: reviewsError } = await supabase
-    .from('reviews')
-    .select('id, user_id, body, spoiler, created_at')
-    .eq('book_id', book.id)
-    .order('created_at', { ascending: false });
-  const reviewList = reviews ?? [];
   const reviewIds = reviewList.map((r: any) => r.id);
 
   // Reactions + comments for all reviews (bulk fetch)
@@ -175,11 +127,15 @@ export default async function BookPage({ params }: { params: { id: string } }) {
               ))}
             </div>
           )}
-          {description && (
+          {book.description ? (
             <p className="mb-4 whitespace-pre-line text-sm leading-relaxed text-slate-600">
-              {description.length > 600 ? description.slice(0, 600).trimEnd() + '…' : description}
+              {book.description.length > 600 ? book.description.slice(0, 600).trimEnd() + '…' : book.description}
             </p>
-          )}
+          ) : book.ol_key ? (
+            <Suspense fallback={<p className="mb-4 h-12 w-full animate-pulse rounded bg-stone-100" />}>
+              <BookDescription bookId={book.id} olKey={book.ol_key} />
+            </Suspense>
+          ) : null}
           {user ? (
             <div className="flex items-center gap-2">
               <span className="text-sm text-slate-600">Your rating:</span>
