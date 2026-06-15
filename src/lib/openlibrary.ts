@@ -14,6 +14,15 @@ export interface OLAuthor {
   workCount?: number;
 }
 
+export interface OLWorkDetails {
+  key: string;
+  title: string;
+  description: string;
+  subjects: string[];
+  coverId?: number;
+  author?: string;
+}
+
 // Search books by title / author / keyword.
 export async function searchBooks(query: string): Promise<OLBook[]> {
   const q = query.trim();
@@ -119,6 +128,45 @@ export async function fetchDescription(workKey: string): Promise<string> {
     return typeof desc === 'string' ? desc : String(desc.value ?? '');
   } catch {
     return '';
+  }
+}
+
+// Fetch enough information to render a standalone Open Library work page.
+export async function fetchWorkDetails(workKey: string): Promise<OLWorkDetails | null> {
+  const key = workKey.startsWith('/') ? workKey : `/${workKey}`;
+  if (!/^\/works\/OL\d+W$/.test(key)) return null;
+
+  try {
+    const res = await fetch(`https://openlibrary.org${key}.json`, { cache: 'no-store', signal: AbortSignal.timeout(7000) });
+    if (!res.ok) return null;
+    const data = await res.json();
+    const desc = data?.description;
+    const description = desc ? (typeof desc === 'string' ? desc : String(desc.value ?? '')) : '';
+    const authorKey = data?.authors?.[0]?.author?.key;
+    let author: string | undefined;
+
+    if (typeof authorKey === 'string' && /^\/authors\/OL\d+A$/.test(authorKey)) {
+      try {
+        const authorRes = await fetch(`https://openlibrary.org${authorKey}.json`, { cache: 'no-store', signal: AbortSignal.timeout(4000) });
+        if (authorRes.ok) {
+          const authorData = await authorRes.json();
+          author = authorData?.name ? String(authorData.name) : undefined;
+        }
+      } catch {
+        /* author is optional */
+      }
+    }
+
+    return {
+      key,
+      title: String(data?.title ?? 'Untitled book'),
+      description,
+      subjects: Array.isArray(data?.subjects) ? data.subjects.map((subject: any) => String(subject)) : [],
+      coverId: Array.isArray(data?.covers) ? Number(data.covers[0]) : undefined,
+      author,
+    };
+  } catch {
+    return null;
   }
 }
 

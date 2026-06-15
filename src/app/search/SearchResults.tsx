@@ -25,15 +25,24 @@ export default async function SearchResults({ q, filter }: { q: string; filter: 
       <ul className="space-y-3">
         {books.map((b) => {
           const src = coverUrl(b.coverId, 'S');
+          const workId = b.key.replace(/^\/works\//, '');
+          const detailHref =
+            `/book/open-library/${encodeURIComponent(workId)}` +
+            `?title=${encodeURIComponent(b.title)}` +
+            `&author=${encodeURIComponent(b.author ?? '')}` +
+            `&coverId=${encodeURIComponent(String(b.coverId ?? ''))}`;
           return (
             <li key={b.key} className="flex items-center gap-4 rounded border border-slate-200 bg-white p-3">
-              <div className="h-[72px] w-[48px] flex-shrink-0 overflow-hidden rounded bg-slate-100">
-                {src && <Image src={src} alt={b.title} width={48} height={72} className="h-full w-full object-cover" />}
-              </div>
-              <div className="min-w-0 flex-1">
-                <p className="truncate font-medium">{b.title}</p>
-                <p className="truncate text-sm text-slate-500">{b.author ?? 'Unknown author'}{b.year ? ` · ${b.year}` : ''}</p>
-              </div>
+              <Link href={detailHref} className="flex min-w-0 flex-1 items-center gap-4 rounded transition hover:text-brand">
+                <div className="h-[72px] w-[48px] flex-shrink-0 overflow-hidden rounded bg-slate-100">
+                  {src && <Image src={src} alt={b.title} width={48} height={72} className="h-full w-full object-cover" />}
+                </div>
+                <div className="min-w-0 flex-1">
+                  <p className="truncate font-medium">{b.title}</p>
+                  <p className="truncate text-sm text-slate-500">{b.author ?? 'Unknown author'}{b.year ? ` · ${b.year}` : ''}</p>
+                  <p className="mt-1 text-xs font-medium text-brand">View details</p>
+                </div>
+              </Link>
               {user ? (
                 <form action={addToShelf} className="flex items-center gap-2">
                   <input type="hidden" name="olKey" value={b.key} />
@@ -49,7 +58,9 @@ export default async function SearchResults({ q, filter }: { q: string; filter: 
                   <PendingButton pendingLabel="Adding..." className="rounded bg-brand px-3 py-1 text-sm font-medium text-white hover:opacity-90">Add</PendingButton>
                 </form>
               ) : (
-                <span className="text-xs text-slate-400">Log in to add</span>
+                <Link href={detailHref} className="rounded border border-stone-300 px-3 py-1 text-sm font-medium text-stone-700 hover:border-brand hover:text-brand">
+                  Open
+                </Link>
               )}
             </li>
           );
