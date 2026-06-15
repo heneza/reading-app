@@ -91,6 +91,21 @@ For a fresh Supabase project, open SQL Editor and run:
 The SQL files create the app tables, indexes, triggers, storage policies, and
 row-level security rules.
 
+## Scaling Notes
+
+- PostgreSQL uses B-tree indexes by default. The later migrations add targeted
+  B-tree indexes for feeds, profiles, messages, notifications, lists, reactions,
+  reviews, quotes, and book activity.
+- `supabase/32_scale_indexes_audit.sql` also enables trigram indexes for local
+  `ILIKE` search suggestions across books, authors, users, and posts.
+- Write rate limits live in database triggers, so the Next.js/Vercel app stays
+  stateless and does not depend on in-memory counters.
+- `audit_logs` records privacy-safe mutation metadata for important user and
+  content tables. It intentionally strips private bodies/notes/message text.
+- Failed requests and rate-limit failures should be monitored through
+  Supabase/Vercel logs, because database trigger exceptions roll back their own
+  writes.
+
 ### 4. Auth Settings
 
 In Supabase Auth, configure redirect URLs for local and production:
