@@ -7,6 +7,7 @@ import { setAiEnabled } from '@/app/actions/account';
 import DeleteAccount from './DeleteAccount';
 import { timeAgo } from '@/lib/time';
 import ReadReceiptsToggle from './ReadReceiptsToggle';
+import ThemeToggle from './ThemeToggle';
 
 export const dynamic = 'force-dynamic';
 
@@ -97,6 +98,15 @@ export default async function SettingsPage() {
           >
             Edit profile →
           </Link>
+        </div>
+      </section>
+
+      {/* Appearance */}
+      <section>
+        <h2 className={sectionH}>Appearance</h2>
+        <div className="space-y-3 rounded-lg border border-stone-200 bg-white p-4 text-sm text-stone-600">
+          <p>Choose how Reading App looks on this device.</p>
+          <ThemeToggle />
         </div>
       </section>
 

@@ -20,6 +20,17 @@ export const metadata: Metadata = {
   description: 'A community for readers',
 };
 
+const themeScript = `
+try {
+  var stored = localStorage.getItem('reading-app-theme');
+  var theme = stored === 'light' || stored === 'dark' ? stored : 'dark';
+  document.documentElement.dataset.theme = theme;
+  document.documentElement.style.colorScheme = theme;
+} catch (_) {
+  document.documentElement.dataset.theme = 'dark';
+}
+`;
+
 export default async function RootLayout({
   children,
 }: {
@@ -45,7 +56,10 @@ export default async function RootLayout({
     }
   }
   return (
-    <html lang="en" className={bodyFont.variable}>
+    <html lang="en" className={bodyFont.variable} suppressHydrationWarning>
+      <head>
+        <script dangerouslySetInnerHTML={{ __html: themeScript }} />
+      </head>
       <body className="font-sans">
         <Nav />
         <main className="mx-auto max-w-[880px] px-5 py-8">{children}</main>
