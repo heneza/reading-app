@@ -189,6 +189,7 @@ export async function reactToPost(formData: FormData) {
   if (!user) return;
   const postId = String(formData.get('postId'));
   const type = String(formData.get('type'));
+  if (type !== 'like') return;
 
   const { data: existing } = await supabase
     .from('post_reactions')

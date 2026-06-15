@@ -550,8 +550,7 @@ export default async function ProfilePage({
                       <li key={`${it.kind}-${it.post.id}`}>
                         <PostCard
                           post={it.post}
-                          author={it.kind === 'repost' ? repostAuthors.get(it.post.user_id) : undefined}
-                          showAuthor={it.kind === 'repost'}
+                          author={it.kind === 'repost' ? repostAuthors.get(it.post.user_id) : profile}
                           canDelete={isOwnProfile && it.kind === 'post'}
                           repostedBy={it.kind === 'repost' ? profile.username : null}
                         />

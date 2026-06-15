@@ -40,7 +40,6 @@ export default async function PostCard({
   const comments = cm ?? [];
   const reposters = rp ?? [];
   const likes = reactions.filter((r: any) => r.type === 'like').length;
-  const dislikes = reactions.filter((r: any) => r.type === 'dislike').length;
   const myReaction = user ? reactions.find((r: any) => r.user_id === user.id)?.type ?? null : null;
   const iReposted = user ? reposters.some((r: any) => r.user_id === user.id) : false;
   const withinHour = Date.now() - new Date(post.created_at).getTime() < 3600000;
@@ -57,6 +56,12 @@ export default async function PostCard({
 
   const pill = (active: boolean) =>
     `rounded-full border px-3 py-1 ${active ? 'border-brand bg-brand text-white' : 'border-slate-300 text-slate-600 hover:bg-slate-100'}`;
+  const heart = myReaction === 'like';
+  const heartCls = `inline-flex h-9 min-w-12 items-center justify-center gap-1.5 rounded-full border px-3 text-sm transition ${
+    heart
+      ? 'border-brand bg-brand text-white'
+      : 'border-slate-300 text-slate-600 hover:border-brand hover:bg-brand-soft hover:text-brand'
+  }`;
 
   return (
     <article className="rounded-lg border border-stone-200 bg-white p-4">
@@ -107,12 +112,15 @@ export default async function PostCard({
         <form action={reactToPost}>
           <input type="hidden" name="postId" value={post.id} />
           <input type="hidden" name="type" value="like" />
-          <PendingButton pendingLabel="Saving..." className={pill(myReaction === 'like')}>Like {likes}</PendingButton>
-        </form>
-        <form action={reactToPost}>
-          <input type="hidden" name="postId" value={post.id} />
-          <input type="hidden" name="type" value="dislike" />
-          <PendingButton pendingLabel="Saving..." className={pill(myReaction === 'dislike')}>Dislike {dislikes}</PendingButton>
+          <PendingButton
+            aria-label={heart ? 'Unlike post' : 'Like post'}
+            title={heart ? 'Unlike post' : 'Like post'}
+            pendingLabel="..."
+            className={heartCls}
+          >
+            <span aria-hidden="true" className="text-base leading-none">{heart ? '♥' : '♡'}</span>
+            <span>{likes}</span>
+          </PendingButton>
         </form>
         <form action={repost} className="ml-auto">
           <input type="hidden" name="postId" value={post.id} />
