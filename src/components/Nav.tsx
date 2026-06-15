@@ -33,8 +33,8 @@ export default async function Nav() {
 
   return (
     <header className="sticky top-0 z-20 border-b border-slate-200/70 bg-white/80 backdrop-blur">
-      <nav className="mx-auto flex max-w-[880px] items-center gap-3 px-5 py-3">
-        <Link href="/" className="whitespace-nowrap text-lg font-bold text-brand">
+      <nav className="mx-auto flex max-w-[880px] items-center gap-2 px-4 py-3 sm:gap-3 sm:px-5">
+        <Link href="/" className="flex-shrink-0 whitespace-nowrap text-base font-bold text-brand sm:text-lg">
           Reading App
         </Link>
 
@@ -47,7 +47,7 @@ export default async function Nav() {
           />
         </form>
 
-        <div className="ml-auto flex items-center gap-2 text-sm">
+        <div className="ml-auto flex min-w-0 items-center gap-1 text-sm sm:gap-2">
           {user && (
             <Link href="/notifications" title="Notifications" className="relative rounded-full px-2 py-1.5 text-slate-600 transition hover:bg-brand-soft hover:text-brand">
               <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M18 8A6 6 0 0 0 6 8c0 7-3 9-3 9h18s-3-2-3-9" /><path d="M13.73 21a2 2 0 0 1-3.46 0" /></svg>
@@ -58,13 +58,13 @@ export default async function Nav() {
           )}
           <Link
             href="/lists"
-            className="rounded-full px-3 py-1.5 text-slate-600 transition hover:bg-brand-soft hover:text-brand"
+            className="hidden rounded-full px-2.5 py-1.5 text-slate-600 transition hover:bg-brand-soft hover:text-brand min-[360px]:inline-flex sm:px-3"
           >
             Lists
           </Link>
           <Link
             href="/articles"
-            className="rounded-full px-3 py-1.5 text-slate-600 transition hover:bg-brand-soft hover:text-brand"
+            className="hidden rounded-full px-3 py-1.5 text-slate-600 transition hover:bg-brand-soft hover:text-brand sm:inline-flex"
           >
             Articles
           </Link>
@@ -118,13 +118,13 @@ export default async function Nav() {
             <>
               <Link
                 href="/search"
-                className="rounded-full px-3 py-1.5 text-slate-600 transition hover:bg-brand-soft hover:text-brand"
+                className="rounded-full px-2.5 py-1.5 text-slate-600 transition hover:bg-brand-soft hover:text-brand sm:px-3"
               >
                 Search
               </Link>
               <Link
                 href="/login"
-                className="rounded-full bg-brand px-4 py-1.5 font-medium text-white transition hover:bg-brand-dark"
+                className="rounded-full bg-brand px-3 py-1.5 font-medium text-white transition hover:bg-brand-dark sm:px-4"
               >
                 Log in
               </Link>

@@ -29,8 +29,11 @@ export default function ListCard({
         {[0, 1, 2].map((i) => {
           const src = coverUrl(covers[i] ?? null, 'M');
           return (
-            <div key={i} className="aspect-[2/3] w-1/3 overflow-hidden rounded bg-stone-100">
-              {src && <Image src={src} alt="" width={120} height={180} className="h-full w-full object-cover" />}
+            <div key={i} className="book-cover-fallback aspect-[2/3] w-1/3 overflow-hidden rounded">
+              <span aria-hidden="true" className="absolute inset-2 z-0 flex items-center justify-center text-center text-xs font-semibold text-stone-600">
+                {i + 1}
+              </span>
+              {src && <Image src={src} alt="" width={120} height={180} className="relative z-10 h-full w-full object-cover" />}
             </div>
           );
         })}

@@ -28,17 +28,21 @@ function CoverGrid({ items }: { items: CoverItem[] }) {
     <ul className="grid grid-cols-3 gap-3 sm:grid-cols-4 md:grid-cols-6">
       {items.map((it) => {
         const src = coverUrl(it.coverId, 'M');
+        const fallback = (it.title ?? 'Book').slice(0, 36);
         return (
           <li key={it.bookId}>
             <Link href={`/book/${it.bookId}`} className="group flex flex-col">
-              <div className="aspect-[2/3] w-full overflow-hidden rounded bg-slate-100 group-hover:opacity-90">
+              <div className="book-cover-fallback aspect-[2/3] w-full overflow-hidden rounded group-hover:opacity-90">
+                <span aria-hidden="true" className="absolute inset-2 z-0 flex items-center justify-center overflow-hidden text-center text-[10px] font-semibold uppercase leading-tight tracking-wide text-stone-600">
+                  {fallback}
+                </span>
                 {src && (
                   <Image
                     src={src}
                     alt={it.title ?? ''}
                     width={200}
                     height={300}
-                    className="h-full w-full object-cover"
+                    className="relative z-10 h-full w-full object-cover"
                   />
                 )}
               </div>
