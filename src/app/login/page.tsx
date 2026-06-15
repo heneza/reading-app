@@ -1,23 +1,20 @@
 import Link from 'next/link';
-import Script from 'next/script';
 import { login, signup, signInWithGoogle } from './actions';
 import PendingButton from '@/components/PendingButton';
+import Turnstile from '@/components/Turnstile';
 
 const inputCls = 'w-full rounded border border-slate-300 px-3 py-2';
 
 export default function LoginPage({
   searchParams,
 }: {
-  searchParams: { error?: string; message?: string; mode?: string };
+  searchParams: { error?: string; message?: string; mode?: string; username?: string; dob?: string; gender?: string };
 }) {
   const isSignup = searchParams.mode === 'signup';
   const turnstileSiteKey = process.env.NEXT_PUBLIC_TURNSTILE_SITE_KEY;
 
   return (
     <div className="mx-auto max-w-sm">
-      {turnstileSiteKey && (
-        <Script src="https://challenges.cloudflare.com/turnstile/v0/api.js" async defer />
-      )}
       <h1 className="mb-1 text-2xl font-bold">{isSignup ? 'Create your account' : 'Welcome back'}</h1>
       <p className="mb-6 text-sm text-slate-500">
         {isSignup ? 'Join Reading App and start your shelf.' : 'Log in to your shelf.'}
@@ -51,7 +48,7 @@ export default function LoginPage({
           <div>
             <div className="relative">
               <span className="pointer-events-none absolute left-3 top-1/2 -translate-y-1/2 text-slate-400">@</span>
-              <input name="username" required autoCapitalize="none" autoCorrect="off" placeholder="username" className="w-full rounded border border-slate-300 py-2 pl-7 pr-3" />
+              <input name="username" required autoCapitalize="none" autoCorrect="off" placeholder="username" defaultValue={searchParams.username ?? ''} className="w-full rounded border border-slate-300 py-2 pl-7 pr-3" />
             </div>
             <p className="mt-1 text-xs text-slate-400">3–20 characters · letters, numbers, periods, underscores.</p>
           </div>
@@ -59,11 +56,11 @@ export default function LoginPage({
           <input name="password" type="password" required minLength={6} placeholder="Password (min 6 chars)" className={inputCls} />
           <label className="block text-xs text-slate-500">
             Date of birth
-            <input name="dob" type="date" required className={`mt-1 ${inputCls}`} />
+            <input name="dob" type="date" required defaultValue={searchParams.dob ?? ''} className={`mt-1 ${inputCls}`} />
           </label>
           <label className="block text-xs text-slate-500">
             Gender
-            <select name="gender" defaultValue="prefer-not-to-say" className={`mt-1 ${inputCls}`}>
+            <select name="gender" defaultValue={searchParams.gender ?? 'prefer-not-to-say'} className={`mt-1 ${inputCls}`}>
               <option value="female">Female</option>
               <option value="male">Male</option>
               <option value="non-binary">Non-binary</option>
@@ -72,7 +69,7 @@ export default function LoginPage({
             </select>
           </label>
           {turnstileSiteKey && (
-            <div className="cf-turnstile" data-sitekey={turnstileSiteKey} />
+            <Turnstile siteKey={turnstileSiteKey} />
           )}
           <PendingButton pendingLabel="Creating account..." className="w-full rounded bg-brand py-2 font-medium text-white hover:opacity-90">
             Create account
@@ -87,7 +84,7 @@ export default function LoginPage({
           <input name="identifier" type="text" required autoCapitalize="none" autoCorrect="off" placeholder="Email or username" className={inputCls} />
           <input name="password" type="password" required placeholder="Password" className={inputCls} />
           {turnstileSiteKey && (
-            <div className="cf-turnstile" data-sitekey={turnstileSiteKey} />
+            <Turnstile siteKey={turnstileSiteKey} />
           )}
           <PendingButton pendingLabel="Logging in..." className="w-full rounded bg-brand py-2 font-medium text-white hover:opacity-90">
             Log in

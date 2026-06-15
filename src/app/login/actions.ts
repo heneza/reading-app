@@ -11,6 +11,25 @@ function getCaptchaToken(formData: FormData) {
   return String(formData.get('cf-turnstile-response') ?? '').trim() || null;
 }
 
+function signupError(message: string, fields: { username?: string; dob?: string; gender?: string } = {}) {
+  const params = new URLSearchParams({ mode: 'signup', error: message });
+  if (fields.username) params.set('username', fields.username);
+  if (/^\d{4}-\d{2}-\d{2}$/.test(fields.dob ?? '')) params.set('dob', fields.dob!);
+  if (fields.gender) params.set('gender', fields.gender);
+  redirect(`/login?${params.toString()}`);
+}
+
+function friendlySignupError(message: string) {
+  const lower = message.toLowerCase();
+  if (lower.includes('captcha')) return 'Verification failed. Refresh the page and try the Cloudflare check again.';
+  if (lower.includes('already') || lower.includes('registered') || lower.includes('exists')) {
+    return 'That email may already have an account. Try logging in or use another email.';
+  }
+  if (lower.includes('password')) return 'Choose a stronger password and try again.';
+  if (lower.includes('email')) return 'Check that email address and try again.';
+  return 'Could not create your account. Please try again.';
+}
+
 async function sendWelcomeEmail(email: string, username: string) {
   const apiKey = process.env.RESEND_API_KEY;
   const from = process.env.EMAIL_FROM;
@@ -67,6 +86,9 @@ export async function login(formData: FormData) {
     : { error: { message: 'no-account' } as { message: string } };
 
   if (!email || error) {
+    if (error?.message?.toLowerCase().includes('captcha')) {
+      redirect('/login?error=' + encodeURIComponent('Verification failed. Refresh the page and try the Cloudflare check again.'));
+    }
     // One generic message for every failure (no account enumeration).
     redirect('/login?error=' + encodeURIComponent('Invalid login — check your email/username and password.'));
   }
@@ -89,7 +111,7 @@ export async function signup(formData: FormData) {
   const username = normalizeUsername(String(formData.get('username') ?? ''));
   const captchaToken = getCaptchaToken(formData);
 
-  const err = (m: string) => redirect('/login?mode=signup&error=' + encodeURIComponent(m));
+  const err = (m: string) => signupError(m, { username, dob, gender });
 
   if (captchaToken === null) err('Complete the verification, then try again.');
 
@@ -119,7 +141,7 @@ export async function signup(formData: FormData) {
       data: { username, date_of_birth: dob, gender: g },
     },
   });
-  if (error) err('Could not create your account. Try a different email.');
+  if (error) err(friendlySignupError(error.message));
 
   await sendWelcomeEmail(email, username);
 
