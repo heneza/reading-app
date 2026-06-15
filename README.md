@@ -1,85 +1,150 @@
-# Reading App — Proof of Concept (Inception phase)
+# Reading App
 
-A **walking skeleton**: the thinnest possible end-to-end slice of the platform,
-wired through the real stack we'll scale on. It proves the architecture works
-top to bottom before we invest in features.
+A Letterboxd-style social reading app for tracking books, sharing reviews and
+posts, building lists, and finding other readers.
 
-**The one thread it proves:** sign up → search a book → shelve it with a
-status → see it on your profile.
+The app is built as a real full-stack prototype: Supabase handles auth,
+database, storage, row-level security, and realtime updates; Next.js handles the
+UI, server actions, API routes, and deployment.
+
+## Current Features
+
+- Email/password auth, username login, Google sign-in, and post-signup onboarding.
+- Search for books and authors through Open Library, with local quick suggestions
+  for books, authors, users, and posts.
+- Public profiles with shelves, favourites, favourite genres, ratings, reviews,
+  recent activity, follows, followers, and a reader signature card.
+- Reading shelves for `reading`, `want to read`, `read`, and `dnf`.
+- Star ratings, reviews, review comments, reactions, content warnings, and share
+  links.
+- Social posting, articles, reposts, post comments, and likes/dislikes.
+- Reader-made book lists.
+- Direct messages, read receipts, realtime notifications, and privacy controls.
+- Reading diary and reading goals.
+- CSV/JSON import from Goodreads, StoryGraph, and Hardcover.
+- JSON account export and account deletion.
+- Light/dark theme setting.
+- Optional Gemini-powered reading assistant.
 
 ## Stack
 
-- **Next.js 14** (App Router, TypeScript, Server Actions)
-- **Supabase** (Postgres + Auth, with Row Level Security)
-- **Tailwind CSS**
-- **Open Library** API for book data (free, no key needed)
+- Next.js 14 App Router
+- React 18 and TypeScript
+- Server Actions and Route Handlers
+- Supabase Auth, Postgres, Storage, RLS, and realtime
+- Tailwind CSS
+- Open Library API for public book metadata
+- Vitest for focused library tests
 
-## What's deliberately NOT here yet
-
-Following, feeds, reviews, ratings UI, clubs, messaging — all of that is v1+
-in the development plan. The PoC stays tiny on purpose.
-
----
-
-## Setup (about 10 minutes)
+## Local Setup
 
 ### 1. Prerequisites
-- Node.js 18.17+ (`node -v`)
-- A free Supabase account → https://supabase.com
 
-### 2. Create a Supabase project
-1. New project (pick a region near you, save the database password).
-2. In the dashboard go to **SQL Editor → New query**, paste the contents of
-   [`supabase/schema.sql`](supabase/schema.sql), and **Run**. This creates the
-   `profiles`, `books`, and `reading_entries` tables, the RLS policies, and a
-   trigger that auto-creates a profile on signup.
-3. (Optional, easiest for local dev) **Authentication → Providers → Email** →
-   turn **"Confirm email" OFF** so you can log in immediately without clicking
-   a confirmation link. Turn it back on before launch.
+- Node.js 18.17+
+- npm
+- A Supabase project
+- Optional: a Gemini API key for the reading assistant
 
-### 3. Configure environment
-1. **Project Settings → API** and copy the **Project URL** and the **anon
-   public** key.
-2. In this folder:
-   ```bash
-   cp .env.example .env.local
-   ```
-3. Paste the two values into `.env.local`.
+### 2. Environment
 
-### 4. Install & run
+Copy the example file and fill in the Supabase values from
+Supabase Dashboard -> Project Settings -> API.
+
+```bash
+cp .env.example .env.local
+```
+
+Required:
+
+```bash
+NEXT_PUBLIC_SUPABASE_URL=https://YOUR-PROJECT.supabase.co
+NEXT_PUBLIC_SUPABASE_ANON_KEY=YOUR-ANON-PUBLIC-KEY
+```
+
+Optional, only for the assistant:
+
+```bash
+GEMINI_API_KEY=YOUR-GEMINI-KEY
+GEMINI_MODEL=gemini-2.5-flash-lite
+```
+
+### 3. Database
+
+For a fresh Supabase project, open SQL Editor and run:
+
+1. `supabase/schema.sql`
+2. The numbered files in `supabase/` in order, from `02_reviews.sql` onward.
+
+The SQL files create the app tables, indexes, triggers, storage policies, and
+row-level security rules.
+
+### 4. Auth Settings
+
+In Supabase Auth, configure redirect URLs for local and production:
+
+```text
+http://localhost:3000/auth/callback
+https://YOUR-VERCEL-DOMAIN/auth/callback
+```
+
+For Google sign-in, enable the Google provider in Supabase and add the provider
+credentials there.
+
+Email confirmation can be controlled in Supabase Auth settings. It can be off
+for local testing and on for production.
+
+### 5. Run The App
+
 ```bash
 npm install
 npm run dev
 ```
-Open http://localhost:3000 → **Get started** → sign up → **Search** → add a
-book → it appears on your shelf.
 
-### 5. Put it under version control
+Open [http://localhost:3000](http://localhost:3000).
+
+## Scripts
+
 ```bash
-git init
-git add .
-git commit -m "chore: walking-skeleton PoC (auth, search, shelf)"
+npm run dev      # start local dev server
+npm run build    # create production build
+npm run start    # run production build
+npm run lint     # Next.js ESLint checks
+npm test         # Vitest tests
 ```
-(`.env.local` is git-ignored, so your keys stay private.)
 
----
+## Deploying
 
-## How it fits the architecture
+The project is ready for Vercel.
 
-| Layer | Where |
-|---|---|
-| Client + server UI | `src/app/**` (App Router, Server Components) |
-| Mutations | Server Actions in `src/app/**/actions.ts` |
-| Auth session refresh | `src/middleware.ts` → `src/utils/supabase/middleware.ts` |
-| DB access | `src/utils/supabase/{server,client}.ts` |
-| External book data | `src/lib/openlibrary.ts` |
-| Schema + security | `supabase/schema.sql` |
+1. Connect the GitHub repository to Vercel.
+2. Add the same environment variables from `.env.local` to Vercel.
+3. Add the production `/auth/callback` URL in Supabase Auth settings.
+4. Push to `main`.
 
-## Next steps (toward v1 / Elaboration)
-1. Relax the `reading_entries` SELECT policy so followers can see each other's
-   activity — that unlocks the social **feed**.
-2. Add **follow / unfollow** and a `follows` table.
-3. Add **ratings** (the column already exists) and a **reviews** table.
-4. Flesh out public **profile pages** at `/u/[username]`.
+Vercel will build and deploy the latest commit automatically.
 
-See `../Development Plan & Requirements.md` for the full phased roadmap.
+## Project Map
+
+| Area | Path |
+| --- | --- |
+| App routes and pages | `src/app/**` |
+| Shared UI components | `src/components/**` |
+| Server actions | `src/app/actions/**` and route-specific `actions.ts` files |
+| Supabase clients | `src/utils/supabase/**` |
+| Book metadata helpers | `src/lib/openlibrary.ts` |
+| Sanitizing, usernames, genres, time helpers | `src/lib/**` |
+| Database schema and migrations | `supabase/**` |
+
+## Near-Term Product Backlog
+
+These are the larger product items still worth planning before implementation:
+
+- Richer signup flow with Goodreads import, genre picks, starter books, founder
+  follows, and starter lists.
+- CAPTCHA, production email confirmation, and welcome email.
+- Email notification preferences.
+- Save, organize, and write quotes.
+- Spotify-style profile connection, if it still fits the product direction.
+- AI-detection policy for articles. This should be treated carefully because AI
+  detectors can be unreliable; a moderation review flow may be safer than an
+  automatic takedown.
