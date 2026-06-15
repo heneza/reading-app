@@ -18,7 +18,7 @@ export default async function EditProfilePage() {
 
   const { data: profile } = await supabase
     .from('profiles')
-    .select('username, display_name, bio, website, twitter, instagram, avatar_url, username_changed_at')
+    .select('*')
     .eq('id', user.id)
     .maybeSingle();
 
@@ -100,6 +100,11 @@ export default async function EditProfilePage() {
         <div>
           <label className="mb-1 block text-sm font-medium">Website</label>
           <input name="website" defaultValue={profile?.website ?? ''} placeholder="https://…" className={field} />
+        </div>
+        <div>
+          <label className="mb-1 block text-sm font-medium">Reading soundtrack</label>
+          <input name="spotify_url" defaultValue={profile?.spotify_url ?? ''} placeholder="Spotify playlist URL" className={field} />
+          <p className="mt-1 text-xs text-stone-400">Optional. Full Spotify account connection belongs to the later music phase.</p>
         </div>
         <div>
           <label className="mb-1 block text-sm font-medium">Instagram</label>

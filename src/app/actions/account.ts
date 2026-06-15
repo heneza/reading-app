@@ -15,6 +15,27 @@ export async function setAiEnabled(formData: FormData) {
   revalidatePath('/', 'layout');
 }
 
+export async function setEmailPreferences(formData: FormData) {
+  const supabase = createClient();
+  const { data: { user } } = await supabase.auth.getUser();
+  if (!user) redirect('/login');
+
+  const frequency = String(formData.get('email_notification_frequency') ?? 'immediate');
+  const validFrequency = ['immediate', 'daily', 'weekly', 'off'];
+  const normalizedFrequency = validFrequency.includes(frequency) ? frequency : 'immediate';
+
+  await supabase
+    .from('profiles')
+    .update({
+      email_notifications: normalizedFrequency !== 'off',
+      email_notification_frequency: normalizedFrequency,
+      email_article_updates: formData.get('email_article_updates') === 'on',
+    })
+    .eq('id', user.id);
+
+  revalidatePath('/settings');
+}
+
 // Permanently delete the user's account and all their data (GDPR erasure).
 export async function deleteAccount() {
   const supabase = createClient();

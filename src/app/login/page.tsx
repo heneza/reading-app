@@ -1,4 +1,5 @@
 import Link from 'next/link';
+import Script from 'next/script';
 import { login, signup, signInWithGoogle } from './actions';
 import PendingButton from '@/components/PendingButton';
 
@@ -10,9 +11,13 @@ export default function LoginPage({
   searchParams: { error?: string; message?: string; mode?: string };
 }) {
   const isSignup = searchParams.mode === 'signup';
+  const turnstileSiteKey = process.env.NEXT_PUBLIC_TURNSTILE_SITE_KEY;
 
   return (
     <div className="mx-auto max-w-sm">
+      {isSignup && turnstileSiteKey && (
+        <Script src="https://challenges.cloudflare.com/turnstile/v0/api.js" async defer />
+      )}
       <h1 className="mb-1 text-2xl font-bold">{isSignup ? 'Create your account' : 'Welcome back'}</h1>
       <p className="mb-6 text-sm text-slate-500">
         {isSignup ? 'Join Reading App and start your shelf.' : 'Log in to your shelf.'}
@@ -66,6 +71,9 @@ export default function LoginPage({
               <option value="prefer-not-to-say">Prefer not to say</option>
             </select>
           </label>
+          {turnstileSiteKey && (
+            <div className="cf-turnstile" data-sitekey={turnstileSiteKey} />
+          )}
           <PendingButton pendingLabel="Creating account..." className="w-full rounded bg-brand py-2 font-medium text-white hover:opacity-90">
             Create account
           </PendingButton>

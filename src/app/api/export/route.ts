@@ -11,7 +11,7 @@ export async function GET() {
   // ones they sent or received — all genuinely their data).
   const [
     profile, entries, reviews, comments, posts, diary, goals, sessions,
-    lists, listItems, contentWarnings, messages, blocks,
+    lists, listItems, quotes, contentWarnings, messages, blocks,
   ] = await Promise.all([
     supabase.from('profiles').select('*').eq('id', user.id).maybeSingle(),
     supabase.from('reading_entries').select('*').eq('user_id', user.id),
@@ -23,6 +23,7 @@ export async function GET() {
     supabase.from('reading_sessions').select('*').eq('user_id', user.id),
     supabase.from('lists').select('*').eq('owner_id', user.id),
     supabase.from('list_likes').select('*').eq('user_id', user.id),
+    supabase.from('quotes').select('*').eq('user_id', user.id),
     supabase.from('content_warnings').select('*').eq('user_id', user.id),
     supabase.from('messages').select('*').or(`sender_id.eq.${user.id},recipient_id.eq.${user.id}`),
     supabase.from('blocks').select('*').eq('blocker_id', user.id),
@@ -41,6 +42,7 @@ export async function GET() {
     reading_sessions: sessions.data ?? [],
     lists: lists.data ?? [],
     list_likes: listItems.data ?? [],
+    quotes: quotes.data ?? [],
     content_warnings: contentWarnings.data ?? [],
     messages: messages.data ?? [],
     blocks: blocks.data ?? [],

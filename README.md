@@ -10,10 +10,11 @@ UI, server actions, API routes, and deployment.
 ## Current Features
 
 - Email/password auth, username login, Google sign-in, and post-signup onboarding.
+- Optional Cloudflare Turnstile CAPTCHA and Resend welcome emails for production signup.
 - Search for books and authors through Open Library, with local quick suggestions
   for books, authors, users, and posts.
 - Public profiles with shelves, favourites, favourite genres, ratings, reviews,
-  recent activity, follows, followers, and a reader signature card.
+  recent activity, follows, followers, and optional social/soundtrack links.
 - Reading shelves for `reading`, `want to read`, `read`, and `dnf`.
 - Star ratings, reviews, review comments, reactions, content warnings, and share
   links.
@@ -21,10 +22,12 @@ UI, server actions, API routes, and deployment.
 - Reader-made book lists.
 - Direct messages, read receipts, realtime notifications, and privacy controls.
 - Reading diary and reading goals.
+- Saved quotes with notes, tags, privacy, and filtering.
 - CSV/JSON import from Goodreads, StoryGraph, and Hardcover.
 - JSON account export and account deletion.
 - Light/dark theme setting.
 - Optional Gemini-powered reading assistant.
+- Optional profile soundtrack link; full Spotify OAuth is a later music-phase item.
 
 ## Stack
 
@@ -59,6 +62,7 @@ Required:
 ```bash
 NEXT_PUBLIC_SUPABASE_URL=https://YOUR-PROJECT.supabase.co
 NEXT_PUBLIC_SUPABASE_ANON_KEY=YOUR-ANON-PUBLIC-KEY
+NEXT_PUBLIC_SITE_URL=http://localhost:3000
 ```
 
 Optional, only for the assistant:
@@ -66,6 +70,15 @@ Optional, only for the assistant:
 ```bash
 GEMINI_API_KEY=YOUR-GEMINI-KEY
 GEMINI_MODEL=gemini-2.5-flash-lite
+```
+
+Optional, for production signup hardening and welcome emails:
+
+```bash
+NEXT_PUBLIC_TURNSTILE_SITE_KEY=YOUR-TURNSTILE-SITE-KEY
+TURNSTILE_SECRET_KEY=YOUR-TURNSTILE-SECRET-KEY
+RESEND_API_KEY=YOUR-RESEND-KEY
+EMAIL_FROM=Reading App <onboarding@yourdomain.com>
 ```
 
 ### 3. Database
@@ -139,12 +152,9 @@ Vercel will build and deploy the latest commit automatically.
 
 These are the larger product items still worth planning before implementation:
 
-- Richer signup flow with Goodreads import, genre picks, starter books, founder
-  follows, and starter lists.
-- CAPTCHA, production email confirmation, and welcome email.
-- Email notification preferences.
-- Save, organize, and write quotes.
-- Spotify-style profile connection, if it still fits the product direction.
-- AI-detection policy for articles. This should be treated carefully because AI
-  detectors can be unreliable; a moderation review flow may be safer than an
+- Real outbound notification emails and digest scheduling.
+- Full Spotify OAuth, playlist linking, and book soundtracks.
+- AI-detection policy for articles. This should be treated carefully because
+  AI detectors can be unreliable; a moderation review flow is safer than an
   automatic takedown.
+- Clubs, buddy reads, spoiler-aware discussions, and reporting/moderation tools.

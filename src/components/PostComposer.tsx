@@ -204,10 +204,18 @@ export default function PostComposer({
       {error && <p className="mt-2 text-sm text-red-700">{error}</p>}
 
       {!isEdit && over && (
-        <label className="mt-2 flex items-center gap-2 text-sm text-stone-600">
-          <input type="checkbox" checked={isArticle} onChange={(e) => setIsArticle(e.target.checked)} />
-          This is long — post as an <span className="font-medium">Article</span> (held for review before it goes public)
-        </label>
+        <div className="mt-2 rounded-lg border border-amber-200 bg-amber-50 p-3 text-sm text-amber-900">
+          <label className="flex items-start gap-2">
+            <input type="checkbox" checked={isArticle} onChange={(e) => setIsArticle(e.target.checked)} className="mt-1" />
+            <span>
+              This is long — post as an <span className="font-medium">Article</span>.
+              Articles are held for founder review before they go public.
+            </span>
+          </label>
+          <p className="mt-2 text-xs text-amber-800">
+            If AI screening is added later, it will be used as a moderation signal. AI detectors can be unreliable, so flagged work should be reviewed before removal.
+          </p>
+        </div>
       )}
 
       <div className="mt-2 flex items-center justify-between">

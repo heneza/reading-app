@@ -3,7 +3,7 @@ import { redirect } from 'next/navigation';
 import { createClient } from '@/utils/supabase/server';
 import { signout } from '@/app/login/actions';
 import { setVisibility } from '@/app/actions/profile';
-import { setAiEnabled } from '@/app/actions/account';
+import { setAiEnabled, setEmailPreferences } from '@/app/actions/account';
 import DeleteAccount from './DeleteAccount';
 import { timeAgo } from '@/lib/time';
 import ReadReceiptsToggle from './ReadReceiptsToggle';
@@ -27,7 +27,7 @@ export default async function SettingsPage() {
 
   const { data: profile } = await supabase
     .from('profiles')
-    .select('username, display_name, read_receipts, likes_visibility, comments_visibility, ai_enabled')
+    .select('*')
     .eq('id', user.id)
     .maybeSingle();
 
@@ -222,6 +222,39 @@ export default async function SettingsPage() {
             </button>
           </form>
         </div>
+      </section>
+
+      {/* Notifications */}
+      <section>
+        <h2 className={sectionH}>Notifications</h2>
+        <form action={setEmailPreferences} className="space-y-3 rounded-lg border border-stone-200 bg-white p-4 text-sm text-stone-600">
+          <label className="flex items-center justify-between gap-3">
+            <span>Email notifications</span>
+            <select
+              name="email_notification_frequency"
+              defaultValue={profile?.email_notifications === false ? 'off' : profile?.email_notification_frequency ?? 'immediate'}
+              className="rounded border border-slate-300 px-2 py-1"
+            >
+              <option value="immediate">Immediately</option>
+              <option value="daily">Daily digest</option>
+              <option value="weekly">Weekly digest</option>
+              <option value="off">Off</option>
+            </select>
+          </label>
+          <label className="flex items-start gap-2">
+            <input
+              type="checkbox"
+              name="email_article_updates"
+              defaultChecked={profile?.email_article_updates !== false}
+              className="mt-1"
+            />
+            <span>Send article approval and moderation updates by email</span>
+          </label>
+          <p className="text-xs text-stone-400">
+            These preferences are ready for production email delivery once an email provider is connected.
+          </p>
+          <button className="rounded bg-brand px-4 py-1.5 text-sm font-medium text-white transition hover:bg-brand-dark">Save email preferences</button>
+        </form>
       </section>
 
       {/* AI assistant */}

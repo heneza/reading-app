@@ -104,6 +104,9 @@ export default async function Nav() {
                   <Link href="/goals" className={item}>
                     Reading goals
                   </Link>
+                  <Link href="/quotes" className={item}>
+                    Quotes
+                  </Link>
                   <Link href="/settings" className={item}>
                     Settings
                   </Link>

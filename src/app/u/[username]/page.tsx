@@ -59,7 +59,7 @@ export default async function ProfilePage({
 
   const { data: profile } = await supabase
     .from('profiles')
-    .select('id, username, display_name, bio, website, twitter, instagram, avatar_url, likes_visibility, comments_visibility')
+    .select('*')
     .eq('username', params.username)
     .maybeSingle();
   if (!profile) notFound();
@@ -283,7 +283,7 @@ export default async function ProfilePage({
 
             {/* Right: actions + socials above the reading bars */}
             <div className="flex flex-shrink-0 flex-col items-end gap-3">
-              {((!isOwnProfile && user) || profile.website || profile.instagram || profile.twitter) && (
+              {((!isOwnProfile && user) || profile.website || profile.instagram || profile.twitter || profile.spotify_url) && (
                 <div className="flex items-center gap-3">
                   {!isOwnProfile && user && (
                     <>
@@ -304,6 +304,9 @@ export default async function ProfilePage({
                     </>
                   )}
                   {profile.website && /^https?:\/\//i.test(profile.website) && <a href={profile.website} target="_blank" rel="noopener noreferrer" className="text-sm text-brand hover:underline">Website</a>}
+                  {profile.spotify_url && /^https?:\/\//i.test(profile.spotify_url) && (
+                    <a href={profile.spotify_url} target="_blank" rel="noopener noreferrer" className="text-sm text-brand hover:underline">Soundtrack</a>
+                  )}
                   {profile.instagram && (
                     <a href={`https://instagram.com/${profile.instagram}`} target="_blank" rel="noopener noreferrer" aria-label="Instagram" title="Instagram" className="text-brand hover:opacity-70"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><rect x="2" y="2" width="20" height="20" rx="5" /><circle cx="12" cy="12" r="4" /><circle cx="17.5" cy="6.5" r="1.2" fill="currentColor" stroke="none" /></svg></a>
                   )}

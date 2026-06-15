@@ -4,40 +4,8 @@ import { revalidatePath } from 'next/cache';
 import { redirect } from 'next/navigation';
 import { createClient } from '@/utils/supabase/server';
 import { GENRES, genreName } from '@/lib/genres';
+import { GENRE_SUBJECTS } from '@/lib/genre-subjects';
 import { fetchSubjectWorks } from '@/lib/openlibrary';
-
-// Open Library subject slug for each of our genres (popularity-ranked works).
-const GENRE_SUBJECTS: Record<string, string> = {
-  'literary-fiction': 'literature',
-  classics: 'classic_literature',
-  contemporary: 'fiction',
-  'historical-fiction': 'historical_fiction',
-  'mystery-crime': 'detective_and_mystery_stories',
-  thriller: 'thriller',
-  horror: 'horror',
-  'science-fiction': 'science_fiction',
-  fantasy: 'fantasy',
-  romance: 'romance',
-  'young-adult': 'young_adult_fiction',
-  childrens: 'juvenile_fiction',
-  poetry: 'poetry',
-  drama: 'drama',
-  'short-stories': 'short_stories',
-  'graphic-novels': 'comics_and_graphic_novels',
-  letters: 'letters',
-  essays: 'essays',
-  'biography-memoir': 'biography',
-  history: 'history',
-  philosophy: 'philosophy',
-  psychology: 'psychology',
-  'self-help': 'self-help',
-  'science-nature': 'science',
-  'society-politics': 'political_science',
-  'religion-spirituality': 'religion',
-  travel: 'travel',
-  'art-design': 'art',
-  'business-economics': 'business',
-};
 
 async function myUsername(supabase: ReturnType<typeof createClient>, userId: string) {
   const { data } = await supabase.from('profiles').select('username, is_admin').eq('id', userId).maybeSingle();

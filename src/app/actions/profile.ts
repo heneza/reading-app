@@ -4,6 +4,23 @@ import { redirect } from 'next/navigation';
 import { revalidatePath } from 'next/cache';
 import { createClient } from '@/utils/supabase/server';
 import { normalizeUsername, validateUsername } from '@/lib/username';
+import { GENRES } from '@/lib/genres';
+
+type StarterBookInput = {
+  key?: string;
+  title?: string;
+  author?: string | null;
+  coverId?: number | null;
+};
+
+type OnboardingOptions = {
+  starterBooks?: StarterBookInput[];
+  followFounders?: boolean;
+  saveStarterLists?: boolean;
+};
+
+const VALID_GENRES = new Set(GENRES.map((g) => g.slug));
+const FOUNDER_USERNAMES = ['nesha', 'niki', 'nikistruga111'];
 
 // Clean a text field: trim, and turn empty strings into null.
 function clean(v: FormDataEntryValue | null): string | null {
@@ -44,6 +61,7 @@ export async function updateProfile(formData: FormData) {
       website: cleanUrl(formData.get('website')),
       twitter: cleanHandle(formData.get('twitter')),
       instagram: cleanHandle(formData.get('instagram')),
+      spotify_url: cleanUrl(formData.get('spotify_url')),
     })
     .eq('id', user.id);
 
@@ -159,7 +177,8 @@ export async function setVisibility(formData: FormData) {
 export async function completeOnboarding(
   displayName: string,
   username: string,
-  slugs: string[]
+  slugs: string[],
+  options: OnboardingOptions = {}
 ): Promise<{ error: string | null }> {
   const supabase = createClient();
   const { data: { user } } = await supabase.auth.getUser();
@@ -183,12 +202,77 @@ export async function completeOnboarding(
   await supabase.from('profiles').update({ display_name: name, onboarded: true }).eq('id', user.id);
 
   await supabase.from('profile_genres').delete().eq('user_id', user.id);
-  const clean = (slugs ?? []).filter((x) => typeof x === 'string').slice(0, 29);
+  const clean = Array.from(
+    new Set((slugs ?? []).filter((x) => typeof x === 'string' && VALID_GENRES.has(x)))
+  ).slice(0, 29);
   if (clean.length) {
     await supabase.from('profile_genres').insert(clean.map((genre) => ({ user_id: user.id, genre })));
   }
 
+  const starterBooks = (options.starterBooks ?? [])
+    .map((book) => ({
+      key: String(book.key ?? '').trim(),
+      title: String(book.title ?? '').trim().slice(0, 220),
+      author: String(book.author ?? '').trim().slice(0, 160) || null,
+      coverId: book.coverId == null ? null : Number(book.coverId),
+    }))
+    .filter((book) => /^\/works\/OL\d+W$/.test(book.key) && book.title)
+    .slice(0, 12);
+
+  for (const book of starterBooks) {
+    const { data: saved } = await supabase
+      .from('books')
+      .upsert(
+        {
+          ol_key: book.key,
+          title: book.title,
+          author: book.author,
+          cover_id: Number.isFinite(book.coverId) ? book.coverId : null,
+        },
+        { onConflict: 'ol_key' }
+      )
+      .select('id')
+      .single();
+
+    if (saved?.id) {
+      await supabase.from('reading_entries').upsert(
+        { user_id: user.id, book_id: saved.id, status: 'want_to_read' },
+        { onConflict: 'user_id,book_id' }
+      );
+    }
+  }
+
+  if (options.followFounders) {
+    const [{ data: admins }, { data: founders }] = await Promise.all([
+      supabase.from('profiles').select('id').eq('is_admin', true),
+      supabase.from('profiles').select('id').in('username', FOUNDER_USERNAMES),
+    ]);
+    const founderIds = Array.from(
+      new Set([...(admins ?? []), ...(founders ?? [])].map((p: any) => p.id).filter((id: string) => id && id !== user.id))
+    );
+    if (founderIds.length) {
+      await supabase.from('follows').upsert(
+        founderIds.map((followee_id) => ({ follower_id: user.id, followee_id })),
+        { onConflict: 'follower_id,followee_id', ignoreDuplicates: true }
+      );
+    }
+  }
+
+  if (options.saveStarterLists && clean.length) {
+    const { data: lists } = await supabase
+      .from('lists')
+      .select('id')
+      .eq('is_system', true)
+      .in('genre', clean);
+    const rows = (lists ?? []).map((list: any) => ({ list_id: list.id, user_id: user.id }));
+    if (rows.length) {
+      await supabase.from('list_likes').upsert(rows, { onConflict: 'list_id,user_id', ignoreDuplicates: true });
+    }
+  }
+
   const finalU = uname || me?.username;
   if (finalU) revalidatePath(`/u/${finalU}`);
+  revalidatePath('/');
+  revalidatePath('/lists');
   return { error: null };
 }
