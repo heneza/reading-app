@@ -3,14 +3,17 @@
 import { useEffect, useRef, useState } from 'react';
 import { useRouter } from 'next/navigation';
 import { createClient } from '@/utils/supabase/client';
+import { notificationHref, notificationText } from '@/lib/notifications';
 
 type Friend = { id: string; username: string };
 type Toast = { id: string; text: string; href: string };
 
 export default function RealtimeNotifications({
   meId,
+  username,
 }: {
   meId: string;
+  username?: string | null;
 }) {
   const [toasts, setToasts] = useState<Toast[]>([]);
   const router = useRouter();
@@ -55,6 +58,31 @@ export default function RealtimeNotifications({
       friendMap.current = new Map(loadedFriends.map((friend) => [friend.id, friend.username]));
       const friendIds = loadedFriends.map((friend) => friend.id);
       channel = supabase.channel('notify');
+
+      channel.on(
+        'postgres_changes',
+        { event: 'INSERT', schema: 'public', table: 'notifications', filter: `user_id=eq.${meId}` },
+        async (payload: any) => {
+          const notification = payload.new;
+          let actorUsername: string | null = null;
+          if (notification?.actor_id) {
+            actorUsername = friendMap.current.get(notification.actor_id) ?? null;
+            if (!actorUsername) {
+              const { data } = await supabase
+                .from('profiles')
+                .select('username')
+                .eq('id', notification.actor_id)
+                .maybeSingle();
+              actorUsername = data?.username ?? null;
+            }
+          }
+          push(
+            notificationText(notification, { actorUsername, viewerUsername: username }),
+            notificationHref(notification, { actorUsername, viewerUsername: username })
+          );
+          router.refresh();
+        }
+      );
 
       // Incoming direct messages (RLS guarantees these are addressed to me).
       channel.on(
@@ -109,7 +137,7 @@ export default function RealtimeNotifications({
       if (channel) supabase.removeChannel(channel);
     };
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [meId]);
+  }, [meId, username, router]);
 
   if (toasts.length === 0) return null;
 

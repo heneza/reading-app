@@ -4,6 +4,7 @@ import { createClient } from '@/utils/supabase/server';
 import { timeAgo } from '@/lib/time';
 import Avatar from '@/components/Avatar';
 import { reviewPost } from '@/app/actions/posts';
+import { notificationHref, notificationText } from '@/lib/notifications';
 
 export const dynamic = 'force-dynamic';
 
@@ -22,6 +23,12 @@ export default async function NotificationsPage() {
     .limit(50);
   const notifs = notifsData ?? [];
 
+  const { data: viewerProfile } = await supabase
+    .from('profiles')
+    .select('username')
+    .eq('id', user.id)
+    .maybeSingle();
+
   const actorIds = Array.from(new Set(notifs.map((n: any) => n.actor_id).filter(Boolean)));
   const actors = new Map<string, any>();
   if (actorIds.length) {
@@ -37,6 +44,16 @@ export default async function NotificationsPage() {
   if (postIds.length) {
     const { data } = await supabase.from('posts').select('id, body_text, status').in('id', postIds);
     (data ?? []).forEach((p: any) => postsMap.set(p.id, p));
+  }
+
+  const bookIds = Array.from(new Set(notifs.map((n: any) => n.book_id).filter(Boolean)));
+  const booksMap = new Map<string, any>();
+  if (bookIds.length) {
+    const { data } = await supabase
+      .from('books')
+      .select('id, title')
+      .in('id', bookIds);
+    (data ?? []).forEach((b: any) => booksMap.set(b.id, b));
   }
 
   // Mark everything except actionable pending items as read.
@@ -119,7 +136,37 @@ export default async function NotificationsPage() {
                 </li>
               );
             }
-            return null;
+
+            const context = {
+              actorUsername: actor?.username ?? null,
+              viewerUsername: viewerProfile?.username ?? null,
+            };
+            const href = notificationHref(n, context);
+            const text = notificationText(n, context);
+            const book = n.book_id ? booksMap.get(n.book_id) : null;
+            const postPreview = n.post_id ? postsMap.get(n.post_id) : null;
+
+            return (
+              <li key={n.id} className="rounded-lg border border-stone-200 bg-white p-3">
+                <Link href={href} className="flex items-center gap-2 text-sm hover:text-brand">
+                  {actor ? (
+                    <Avatar src={actor.avatar_url} name={actor.display_name ?? actor.username} size={26} />
+                  ) : (
+                    <span className="h-[26px] w-[26px] flex-shrink-0 rounded-full bg-brand-soft" />
+                  )}
+                  <span className="min-w-0 flex-1 text-stone-700">{text}</span>
+                  {!n.read && <span className="h-2 w-2 flex-shrink-0 rounded-full bg-brand" />}
+                  <span className="flex-shrink-0 text-xs text-stone-400">{timeAgo(n.created_at)}</span>
+                </Link>
+                {book && <p className="mt-2 truncate pl-8 text-xs text-stone-500">{book.title}</p>}
+                {postPreview && (
+                  <p className="mt-2 pl-8 text-xs text-stone-500">
+                    {postPreview.body_text.slice(0, 120)}
+                    {postPreview.body_text.length > 120 ? '…' : ''}
+                  </p>
+                )}
+              </li>
+            );
           })}
         </ul>
       )}

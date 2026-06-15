@@ -64,7 +64,7 @@ export default async function RootLayout({
         <Nav viewerId={user?.id ?? null} profile={viewerProfile} />
         <main className="mx-auto max-w-[880px] px-5 py-8">{children}</main>
         {user && aiEnabled && <Assistant />}
-        {user && <RealtimeNotifications meId={user.id} />}
+        {user && <RealtimeNotifications meId={user.id} username={viewerProfile?.username ?? null} />}
       </body>
     </html>
   );
