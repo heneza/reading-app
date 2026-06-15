@@ -15,7 +15,7 @@ export default function LoginPage({
 
   return (
     <div className="mx-auto max-w-sm">
-      {isSignup && turnstileSiteKey && (
+      {turnstileSiteKey && (
         <Script src="https://challenges.cloudflare.com/turnstile/v0/api.js" async defer />
       )}
       <h1 className="mb-1 text-2xl font-bold">{isSignup ? 'Create your account' : 'Welcome back'}</h1>
@@ -86,6 +86,9 @@ export default function LoginPage({
         <form action={login} className="space-y-3">
           <input name="identifier" type="text" required autoCapitalize="none" autoCorrect="off" placeholder="Email or username" className={inputCls} />
           <input name="password" type="password" required placeholder="Password" className={inputCls} />
+          {turnstileSiteKey && (
+            <div className="cf-turnstile" data-sitekey={turnstileSiteKey} />
+          )}
           <PendingButton pendingLabel="Logging in..." className="w-full rounded bg-brand py-2 font-medium text-white hover:opacity-90">
             Log in
           </PendingButton>

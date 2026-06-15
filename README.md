@@ -72,14 +72,17 @@ GEMINI_API_KEY=YOUR-GEMINI-KEY
 GEMINI_MODEL=gemini-2.5-flash-lite
 ```
 
-Optional, for production signup hardening and welcome emails:
+Optional, for production auth hardening and welcome emails:
 
 ```bash
 NEXT_PUBLIC_TURNSTILE_SITE_KEY=YOUR-TURNSTILE-SITE-KEY
-TURNSTILE_SECRET_KEY=YOUR-TURNSTILE-SECRET-KEY
 RESEND_API_KEY=YOUR-RESEND-KEY
 EMAIL_FROM=Reading App <onboarding@yourdomain.com>
 ```
+
+The matching Turnstile secret key goes in Supabase Dashboard -> Project
+Settings -> Authentication -> Bot and Abuse Protection. Do not expose it in
+frontend environment variables.
 
 ### 3. Database
 
@@ -120,6 +123,10 @@ credentials there.
 
 Email confirmation can be controlled in Supabase Auth settings. It can be off
 for local testing and on for production.
+
+For CAPTCHA, create a Cloudflare Turnstile widget, add its public site key as
+`NEXT_PUBLIC_TURNSTILE_SITE_KEY` in Vercel, then enable CAPTCHA protection in
+Supabase Auth with the widget's secret key.
 
 ### 5. Run The App
 

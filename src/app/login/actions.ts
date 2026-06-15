@@ -6,34 +6,9 @@ import { headers } from 'next/headers';
 import { createClient } from '@/utils/supabase/server';
 import { normalizeUsername, validateUsername } from '@/lib/username';
 
-async function verifyTurnstile(formData: FormData) {
-  const secret = process.env.TURNSTILE_SECRET_KEY;
-  if (!secret || !process.env.NEXT_PUBLIC_TURNSTILE_SITE_KEY) return true;
-
-  const token = String(formData.get('cf-turnstile-response') ?? '');
-  if (!token) return false;
-
-  const h = headers();
-  const remoteip =
-    h.get('CF-Connecting-IP') ??
-    h.get('X-Forwarded-For')?.split(',')[0]?.trim() ??
-    undefined;
-
-  const body = new FormData();
-  body.append('secret', secret);
-  body.append('response', token);
-  if (remoteip) body.append('remoteip', remoteip);
-
-  try {
-    const res = await fetch('https://challenges.cloudflare.com/turnstile/v0/siteverify', {
-      method: 'POST',
-      body,
-    });
-    const data = await res.json();
-    return !!data.success;
-  } catch {
-    return false;
-  }
+function getCaptchaToken(formData: FormData) {
+  if (!process.env.NEXT_PUBLIC_TURNSTILE_SITE_KEY) return undefined;
+  return String(formData.get('cf-turnstile-response') ?? '').trim() || null;
 }
 
 async function sendWelcomeEmail(email: string, username: string) {
@@ -70,6 +45,11 @@ export async function login(formData: FormData) {
   const supabase = createClient();
   const identifier = String(formData.get('identifier') ?? formData.get('email') ?? '').trim();
   const password = String(formData.get('password') ?? '');
+  const captchaToken = getCaptchaToken(formData);
+
+  if (captchaToken === null) {
+    redirect('/login?error=' + encodeURIComponent('Complete the verification, then try again.'));
+  }
 
   // If they typed a username (no "@"), resolve it to the account email.
   let email = identifier;
@@ -79,7 +59,11 @@ export async function login(formData: FormData) {
   }
 
   const { error } = email
-    ? await supabase.auth.signInWithPassword({ email, password })
+    ? await supabase.auth.signInWithPassword({
+        email,
+        password,
+        options: captchaToken ? { captchaToken } : undefined,
+      })
     : { error: { message: 'no-account' } as { message: string } };
 
   if (!email || error) {
@@ -103,8 +87,11 @@ export async function signup(formData: FormData) {
   const dob = String(formData.get('dob') ?? '').trim();
   const gender = String(formData.get('gender') ?? '').trim();
   const username = normalizeUsername(String(formData.get('username') ?? ''));
+  const captchaToken = getCaptchaToken(formData);
 
   const err = (m: string) => redirect('/login?mode=signup&error=' + encodeURIComponent(m));
+
+  if (captchaToken === null) err('Complete the verification, then try again.');
 
   if (!/^[^@\s]+@[^@\s]+\.[^@\s]+$/.test(email)) err('Enter a valid email address.');
 
@@ -120,10 +107,6 @@ export async function signup(formData: FormData) {
   const allowedGenders = ['female', 'male', 'non-binary', 'other', 'prefer-not-to-say'];
   const g = allowedGenders.includes(gender) ? gender : 'prefer-not-to-say';
 
-  if (!(await verifyTurnstile(formData))) {
-    err('Verification failed. Please try again.');
-  }
-
   // Username taken? (case-insensitive)
   const { data: taken } = await supabase.from('profiles').select('id').ilike('username', username).maybeSingle();
   if (taken) err(`@${username} is taken — please choose another.`);
@@ -131,7 +114,10 @@ export async function signup(formData: FormData) {
   const { data, error } = await supabase.auth.signUp({
     email,
     password,
-    options: { data: { username, date_of_birth: dob, gender: g } },
+    options: {
+      captchaToken: captchaToken || undefined,
+      data: { username, date_of_birth: dob, gender: g },
+    },
   });
   if (error) err('Could not create your account. Try a different email.');
 
