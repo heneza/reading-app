@@ -61,8 +61,14 @@ export default async function SettingsPage({
           </p>
           <div className="flex flex-wrap items-center gap-2 border-t border-stone-100 pt-3">
             <Link
-              href="/settings/profile"
+              href="/settings/activity"
               className="rounded bg-brand px-4 py-2 text-sm font-medium text-white hover:opacity-90"
+            >
+              My activity
+            </Link>
+            <Link
+              href="/settings/profile"
+              className="rounded border border-stone-300 px-4 py-2 text-sm font-medium text-stone-700 hover:bg-stone-100"
             >
               Edit profile
             </Link>
