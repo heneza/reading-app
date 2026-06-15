@@ -75,7 +75,8 @@ export default function LoginPage({
             <p className="mt-1 text-xs text-slate-400">3–20 characters · letters, numbers, periods, underscores.</p>
           </div>
           <input name="email" type="email" required autoComplete="email" placeholder="you@example.com" className={inputCls} />
-          <input name="password" type="password" required minLength={6} autoComplete="new-password" placeholder="Password (min 6 chars)" className={inputCls} />
+          <input name="password" type="password" required minLength={8} autoComplete="new-password" placeholder="Create a strong password" className={inputCls} />
+          <p className="-mt-2 text-xs text-slate-400">Use at least 8 characters. Longer is better.</p>
           <label className="block text-xs text-slate-500">
             Date of birth
             <input name="dob" type="date" required autoComplete="bday" defaultValue={searchParams.dob ?? ''} className={`mt-1 ${inputCls}`} />
