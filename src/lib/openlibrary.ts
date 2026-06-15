@@ -23,6 +23,9 @@ export interface OLWorkDetails {
   author?: string;
 }
 
+const SEARCH_REVALIDATE_SECONDS = 60 * 60 * 6;
+const DETAILS_REVALIDATE_SECONDS = 60 * 60 * 24 * 7;
+
 // Search books by title / author / keyword.
 export async function searchBooks(query: string): Promise<OLBook[]> {
   const q = query.trim();
@@ -35,7 +38,10 @@ export async function searchBooks(query: string): Promise<OLBook[]> {
     '&fields=key,title,author_name,first_publish_year,cover_i';
 
   try {
-    const res = await fetch(url, { cache: 'no-store', signal: AbortSignal.timeout(14000) });
+    const res = await fetch(url, {
+      next: { revalidate: SEARCH_REVALIDATE_SECONDS },
+      signal: AbortSignal.timeout(14000),
+    });
     if (!res.ok) return [];
     const data = await res.json();
     return (data.docs ?? []).map((d: any): OLBook => ({
@@ -60,7 +66,10 @@ export async function searchAuthors(query: string): Promise<OLAuthor[]> {
     `?q=${encodeURIComponent(q)}&limit=20`;
 
   try {
-    const res = await fetch(url, { cache: 'no-store', signal: AbortSignal.timeout(14000) });
+    const res = await fetch(url, {
+      next: { revalidate: SEARCH_REVALIDATE_SECONDS },
+      signal: AbortSignal.timeout(14000),
+    });
     if (!res.ok) return [];
     const data = await res.json();
     return (data.docs ?? []).map((d: any): OLAuthor => ({
@@ -85,7 +94,10 @@ export async function fetchSubjects(workKey: string): Promise<string[]> {
   const key = workKey.startsWith('/') ? workKey : `/${workKey}`;
   if (!/^\/works\/OL\d+W$/.test(key)) return []; // guard against SSRF via crafted keys
   try {
-    const res = await fetch(`https://openlibrary.org${key}.json`, { cache: 'no-store', signal: AbortSignal.timeout(5000) });
+    const res = await fetch(`https://openlibrary.org${key}.json`, {
+      next: { revalidate: DETAILS_REVALIDATE_SECONDS },
+      signal: AbortSignal.timeout(5000),
+    });
     if (!res.ok) return [];
     const data = await res.json();
     const subjects = data.subjects;
@@ -102,7 +114,10 @@ export async function lookupByIsbn(
   const clean = (isbn || '').replace(/[^0-9Xx]/g, '');
   if (!clean) return null;
   try {
-    const res = await fetch(`https://openlibrary.org/isbn/${clean}.json`, { cache: 'no-store' });
+    const res = await fetch(`https://openlibrary.org/isbn/${clean}.json`, {
+      next: { revalidate: DETAILS_REVALIDATE_SECONDS },
+      signal: AbortSignal.timeout(5000),
+    });
     if (!res.ok) return null;
     const data = await res.json();
     const olKey = data?.works?.[0]?.key as string | undefined;
@@ -120,7 +135,10 @@ export async function fetchDescription(workKey: string): Promise<string> {
   const key = workKey.startsWith('/') ? workKey : `/${workKey}`;
   if (!/^\/works\/OL\d+W$/.test(key)) return ''; // guard against SSRF via crafted keys
   try {
-    const res = await fetch(`https://openlibrary.org${key}.json`, { cache: 'no-store', signal: AbortSignal.timeout(5000) });
+    const res = await fetch(`https://openlibrary.org${key}.json`, {
+      next: { revalidate: DETAILS_REVALIDATE_SECONDS },
+      signal: AbortSignal.timeout(5000),
+    });
     if (!res.ok) return '';
     const d = await res.json();
     const desc = d?.description;
@@ -137,7 +155,10 @@ export async function fetchWorkDetails(workKey: string): Promise<OLWorkDetails |
   if (!/^\/works\/OL\d+W$/.test(key)) return null;
 
   try {
-    const res = await fetch(`https://openlibrary.org${key}.json`, { cache: 'no-store', signal: AbortSignal.timeout(7000) });
+    const res = await fetch(`https://openlibrary.org${key}.json`, {
+      next: { revalidate: DETAILS_REVALIDATE_SECONDS },
+      signal: AbortSignal.timeout(7000),
+    });
     if (!res.ok) return null;
     const data = await res.json();
     const desc = data?.description;
@@ -147,7 +168,10 @@ export async function fetchWorkDetails(workKey: string): Promise<OLWorkDetails |
 
     if (typeof authorKey === 'string' && /^\/authors\/OL\d+A$/.test(authorKey)) {
       try {
-        const authorRes = await fetch(`https://openlibrary.org${authorKey}.json`, { cache: 'no-store', signal: AbortSignal.timeout(4000) });
+        const authorRes = await fetch(`https://openlibrary.org${authorKey}.json`, {
+          next: { revalidate: DETAILS_REVALIDATE_SECONDS },
+          signal: AbortSignal.timeout(4000),
+        });
         if (authorRes.ok) {
           const authorData = await authorRes.json();
           author = authorData?.name ? String(authorData.name) : undefined;
@@ -180,7 +204,10 @@ export async function fetchSubjectWorks(
   try {
     const res = await fetch(
       `https://openlibrary.org/subjects/${slug}.json?limit=${limit}`,
-      { cache: 'no-store' }
+      {
+        next: { revalidate: DETAILS_REVALIDATE_SECONDS },
+        signal: AbortSignal.timeout(7000),
+      }
     );
     if (!res.ok) return [];
     const data = await res.json();

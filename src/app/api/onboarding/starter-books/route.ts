@@ -4,6 +4,10 @@ import { fetchSubjectWorks } from '@/lib/openlibrary';
 
 export const dynamic = 'force-dynamic';
 
+const CACHE_HEADERS = {
+  'Cache-Control': 'public, max-age=300, stale-while-revalidate=86400',
+};
+
 function cleanGenres(raw: string | null) {
   return (raw ?? '')
     .split(',')
@@ -16,7 +20,7 @@ export async function GET(req: Request) {
   const url = new URL(req.url);
   const genres = cleanGenres(url.searchParams.get('genres'));
 
-  if (genres.length === 0) return NextResponse.json({ items: [] });
+  if (genres.length === 0) return NextResponse.json({ items: [] }, { headers: CACHE_HEADERS });
 
   const results = await Promise.all(
     genres.map((genre) => fetchSubjectWorks(GENRE_SUBJECTS[genre], 8))
@@ -31,5 +35,5 @@ export async function GET(req: Request) {
     })
     .slice(0, 12);
 
-  return NextResponse.json({ items });
+  return NextResponse.json({ items }, { headers: CACHE_HEADERS });
 }

@@ -39,21 +39,21 @@ export default async function RootLayout({
   const supabase = createClient();
   const { data: { user } } = await supabase.auth.getUser();
 
-  let friends: { id: string; username: string }[] = [];
+  let viewerProfile: {
+    username: string | null;
+    avatar_url: string | null;
+    display_name: string | null;
+    ai_enabled: boolean | null;
+  } | null = null;
   let aiEnabled = true;
   if (user) {
-    const [{ data: outRows }, { data: inRows }, { data: meProf }] = await Promise.all([
-      supabase.from('follows').select('followee_id').eq('follower_id', user.id),
-      supabase.from('follows').select('follower_id').eq('followee_id', user.id),
-      supabase.from('profiles').select('ai_enabled').eq('id', user.id).maybeSingle(),
-    ]);
+    const { data: meProf } = await supabase
+      .from('profiles')
+      .select('username, avatar_url, display_name, ai_enabled')
+      .eq('id', user.id)
+      .maybeSingle();
+    viewerProfile = meProf ?? null;
     aiEnabled = meProf?.ai_enabled !== false;
-    const out = new Set((outRows ?? []).map((r: any) => r.followee_id));
-    const friendIds = (inRows ?? []).map((r: any) => r.follower_id).filter((id: string) => out.has(id));
-    if (friendIds.length) {
-      const { data: profs } = await supabase.from('profiles').select('id, username').in('id', friendIds);
-      friends = (profs ?? []).map((p: any) => ({ id: p.id, username: p.username }));
-    }
   }
   return (
     <html lang="en" className={bodyFont.variable} suppressHydrationWarning>
@@ -61,10 +61,10 @@ export default async function RootLayout({
         <script dangerouslySetInnerHTML={{ __html: themeScript }} />
       </head>
       <body className="font-sans">
-        <Nav />
+        <Nav viewerId={user?.id ?? null} profile={viewerProfile} />
         <main className="mx-auto max-w-[880px] px-5 py-8">{children}</main>
         {user && aiEnabled && <Assistant />}
-        {user && <RealtimeNotifications meId={user.id} friends={friends} />}
+        {user && <RealtimeNotifications meId={user.id} />}
       </body>
     </html>
   );

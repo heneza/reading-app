@@ -11,6 +11,7 @@ import ShareButton from '@/components/ShareButton';
 import PostComposer from '@/components/PostComposer';
 import PostCard from '@/components/PostCard';
 import PendingButton from '@/components/PendingButton';
+import { loadPostCardInteractions } from '@/lib/post-interactions';
 
 function linkifyMentions(text: string, valid: Set<string>): React.ReactNode[] {
   const parts: React.ReactNode[] = [];
@@ -196,6 +197,14 @@ export default async function ProfilePage({
       .limit(60);
     diary = dv ?? [];
   }
+
+  const visiblePosts =
+    tab === 'posts'
+      ? feed.map((item: any) => item.post)
+      : tab === 'likes' && canLikes
+        ? likeItems.posts
+        : [];
+  const postInteractions = await loadPostCardInteractions(supabase, visiblePosts);
 
   // Group the diary preview by calendar month for the sidebar card.
   const diaryByMonth: { key: string; label: string; items: any[] }[] = [];
@@ -556,6 +565,8 @@ export default async function ProfilePage({
                           author={it.kind === 'repost' ? repostAuthors.get(it.post.user_id) : profile}
                           canDelete={isOwnProfile && it.kind === 'post'}
                           repostedBy={it.kind === 'repost' ? profile.username : null}
+                          viewerId={user?.id ?? null}
+                          interactions={postInteractions.get(it.post.id)}
                         />
                       </li>
                     ))}
@@ -572,7 +583,16 @@ export default async function ProfilePage({
                 <p className="text-sm text-stone-500">No liked posts yet.</p>
               ) : (
                 <ul className="space-y-3">
-                  {likeItems.posts.map((p: any) => <li key={p.id}><PostCard post={p} author={likeItems.authors.get(p.user_id)} /></li>)}
+                  {likeItems.posts.map((p: any) => (
+                    <li key={p.id}>
+                      <PostCard
+                        post={p}
+                        author={likeItems.authors.get(p.user_id)}
+                        viewerId={user?.id ?? null}
+                        interactions={postInteractions.get(p.id)}
+                      />
+                    </li>
+                  ))}
                 </ul>
               )
             )}

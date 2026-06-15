@@ -1,28 +1,40 @@
 import { createClient } from '@/utils/supabase/server';
 import PostCard from '@/components/PostCard';
+import { loadPostCardInteractions } from '@/lib/post-interactions';
 
 export const dynamic = 'force-dynamic';
 
 export default async function ArticlesPage() {
   const supabase = createClient();
-  const { data: articlesData } = await supabase
-    .from('posts')
-    .select('*')
-    .eq('is_article', true)
-    .eq('status', 'published')
-    .order('created_at', { ascending: false })
-    .limit(40);
+  const [
+    {
+      data: { user },
+    },
+    { data: articlesData },
+  ] = await Promise.all([
+    supabase.auth.getUser(),
+    supabase
+      .from('posts')
+      .select('*')
+      .eq('is_article', true)
+      .eq('status', 'published')
+      .order('created_at', { ascending: false })
+      .limit(40),
+  ]);
   const articles = articlesData ?? [];
 
   const authors = new Map<string, any>();
   const ids = Array.from(new Set(articles.map((p: any) => p.user_id)));
-  if (ids.length) {
-    const { data: au } = await supabase
-      .from('profiles')
-      .select('id, username, display_name, avatar_url')
-      .in('id', ids);
-    (au ?? []).forEach((a: any) => authors.set(a.id, a));
-  }
+  const [authorsRes, interactions] = await Promise.all([
+    ids.length
+      ? supabase
+          .from('profiles')
+          .select('id, username, display_name, avatar_url')
+          .in('id', ids)
+      : Promise.resolve({ data: [] as any[] }),
+    loadPostCardInteractions(supabase, articles),
+  ]);
+  (authorsRes.data ?? []).forEach((a: any) => authors.set(a.id, a));
 
   return (
     <div>
@@ -34,7 +46,12 @@ export default async function ArticlesPage() {
         <ul className="space-y-4">
           {articles.map((p: any) => (
             <li key={p.id}>
-              <PostCard post={p} author={authors.get(p.user_id)} />
+              <PostCard
+                post={p}
+                author={authors.get(p.user_id)}
+                viewerId={user?.id ?? null}
+                interactions={interactions.get(p.id)}
+              />
             </li>
           ))}
         </ul>

@@ -5,23 +5,33 @@ import Avatar from '@/components/Avatar';
 import SearchSuggestBox from '@/components/SearchSuggestBox';
 import PendingButton from '@/components/PendingButton';
 
-export default async function Nav() {
-  const supabase = createClient();
-  const {
-    data: { user },
-  } = await supabase.auth.getUser();
+type ViewerProfile = {
+  username: string | null;
+  avatar_url: string | null;
+  display_name: string | null;
+};
 
-  let username: string | null = null;
-  let avatarUrl: string | null = null;
-  let displayName: string | null = null;
+export default async function Nav({
+  viewerId,
+  profile,
+}: {
+  viewerId?: string | null;
+  profile?: ViewerProfile | null;
+}) {
+  let username = profile?.username ?? null;
+  let avatarUrl = profile?.avatar_url ?? null;
+  let displayName = profile?.display_name ?? null;
   let unread = 0;
   let notifUnread = 0;
-  if (user) {
+  if (viewerId) {
+    const supabase = createClient();
     // Independent lookups — run together instead of three sequential round-trips.
     const [pRes, unreadRes, notifRes] = await Promise.all([
-      supabase.from('profiles').select('username, avatar_url, display_name').eq('id', user.id).maybeSingle(),
-      supabase.from('messages').select('id', { count: 'exact', head: true }).eq('recipient_id', user.id).is('read_at', null),
-      supabase.from('notifications').select('id', { count: 'exact', head: true }).eq('user_id', user.id).eq('read', false),
+      profile
+        ? Promise.resolve({ data: profile })
+        : supabase.from('profiles').select('username, avatar_url, display_name').eq('id', viewerId).maybeSingle(),
+      supabase.from('messages').select('id', { count: 'exact', head: true }).eq('recipient_id', viewerId).is('read_at', null),
+      supabase.from('notifications').select('id', { count: 'exact', head: true }).eq('user_id', viewerId).eq('read', false),
     ]);
     username = pRes.data?.username ?? null;
     avatarUrl = pRes.data?.avatar_url ?? null;
@@ -47,7 +57,7 @@ export default async function Nav() {
         />
 
         <div className="ml-auto flex min-w-0 items-center gap-1 text-sm sm:gap-2">
-          {user && (
+          {viewerId && (
             <Link href="/notifications" title="Notifications" className="relative rounded-full px-2 py-1.5 text-slate-600 transition hover:bg-brand-soft hover:text-brand">
               <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M18 8A6 6 0 0 0 6 8c0 7-3 9-3 9h18s-3-2-3-9" /><path d="M13.73 21a2 2 0 0 1-3.46 0" /></svg>
               {notifUnread > 0 && (
@@ -67,7 +77,7 @@ export default async function Nav() {
           >
             Articles
           </Link>
-          {user ? (
+          {viewerId ? (
             /* Profile menu (reveals on hover) */
             <div className="group relative">
               <Link

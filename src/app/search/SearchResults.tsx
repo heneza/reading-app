@@ -5,6 +5,7 @@ import { addToShelf } from '@/app/actions/shelf';
 import { createClient } from '@/utils/supabase/server';
 import PostCard from '@/components/PostCard';
 import PendingButton from '@/components/PendingButton';
+import { loadPostCardInteractions } from '@/lib/post-interactions';
 
 type Filter = 'books' | 'authors' | 'users' | 'posts';
 
@@ -115,14 +116,24 @@ export default async function SearchResults({ q, filter }: { q: string; filter: 
 
   const ids = Array.from(new Set(posts.map((x: any) => x.user_id)));
   const postAuthors = new Map<string, any>();
-  if (ids.length) {
-    const { data: au } = await supabase.from('profiles').select('id, username, display_name, avatar_url').in('id', ids);
-    (au ?? []).forEach((a: any) => postAuthors.set(a.id, a));
-  }
+  const [authorsRes, interactions] = await Promise.all([
+    ids.length
+      ? supabase.from('profiles').select('id, username, display_name, avatar_url').in('id', ids)
+      : Promise.resolve({ data: [] as any[] }),
+    loadPostCardInteractions(supabase, posts),
+  ]);
+  (authorsRes.data ?? []).forEach((a: any) => postAuthors.set(a.id, a));
   return (
     <ul className="space-y-3">
       {posts.map((p: any) => (
-        <li key={p.id}><PostCard post={p} author={postAuthors.get(p.user_id)} /></li>
+        <li key={p.id}>
+          <PostCard
+            post={p}
+            author={postAuthors.get(p.user_id)}
+            viewerId={user?.id ?? null}
+            interactions={interactions.get(p.id)}
+          />
+        </li>
       ))}
     </ul>
   );

@@ -6,6 +6,7 @@ import Avatar from '@/components/Avatar';
 import PostCard from '@/components/PostCard';
 import BookMarquee from '@/components/BookMarquee';
 import { timeAgo } from '@/lib/time';
+import { loadPostCardInteractions } from '@/lib/post-interactions';
 
 export const dynamic = 'force-dynamic';
 
@@ -97,7 +98,11 @@ export default async function ExplorePage() {
   // list that has books in it.
   let featured: { id: string; title: string; ownerName: string | null; items: CoverItem[] } | null = null;
   {
-    const { data: ls } = await supabase.from('lists').select('id, title, owner_id');
+    const { data: ls } = await supabase
+      .from('lists')
+      .select('id, title, owner_id')
+      .order('created_at', { ascending: false })
+      .limit(60);
     const all = (ls ?? []).slice().sort(() => Math.random() - 0.5).slice(0, 8);
     if (all.length) {
       // One query for the items of all candidate lists, then pick a random
@@ -248,16 +253,17 @@ export default async function ExplorePage() {
   }
 
   // For you: books in my favourite genres that I haven't shelved yet.
-  const { data: myGenreRows } = await supabase
-    .from('profile_genres')
-    .select('genre')
-    .eq('user_id', user.id);
+  const [{ data: myGenreRows }, { data: myEntries }] = await Promise.all([
+    supabase
+      .from('profile_genres')
+      .select('genre')
+      .eq('user_id', user.id),
+    supabase
+      .from('reading_entries')
+      .select('book_id')
+      .eq('user_id', user.id),
+  ]);
   const mySlugs = (myGenreRows ?? []).map((r: any) => r.genre);
-
-  const { data: myEntries } = await supabase
-    .from('reading_entries')
-    .select('book_id')
-    .eq('user_id', user.id);
   const shelved = new Set((myEntries ?? []).map((r: any) => r.book_id));
 
   let forYou: CoverItem[] = [];
@@ -265,7 +271,8 @@ export default async function ExplorePage() {
     const { data: bgRows } = await supabase
       .from('book_genres')
       .select('book_id')
-      .in('genre', mySlugs);
+      .in('genre', mySlugs)
+      .limit(120);
     const recIds = Array.from(new Set((bgRows ?? []).map((r: any) => r.book_id)))
       .filter((id) => !shelved.has(id))
       .slice(0, 12);
@@ -293,16 +300,17 @@ export default async function ExplorePage() {
     .limit(15);
   const shortPosts = shortPostsData ?? [];
   const postAuthors = new Map<string, any>();
-  {
-    const ids = Array.from(new Set(shortPosts.map((p: any) => p.user_id)));
-    if (ids.length) {
-      const { data: au } = await supabase
-        .from('profiles')
-        .select('id, username, display_name, avatar_url')
-        .in('id', ids);
-      (au ?? []).forEach((a: any) => postAuthors.set(a.id, a));
-    }
-  }
+  const authorIds = Array.from(new Set(shortPosts.map((p: any) => p.user_id)));
+  const [authorsRes, shortPostInteractions] = await Promise.all([
+    authorIds.length
+      ? supabase
+          .from('profiles')
+          .select('id, username, display_name, avatar_url')
+          .in('id', authorIds)
+      : Promise.resolve({ data: [] as any[] }),
+    loadPostCardInteractions(supabase, shortPosts),
+  ]);
+  (authorsRes.data ?? []).forEach((a: any) => postAuthors.set(a.id, a));
 
   return (
     <div className="space-y-10">
@@ -350,7 +358,12 @@ export default async function ExplorePage() {
           <ul className="space-y-3">
             {shortPosts.map((p: any) => (
               <li key={p.id}>
-                <PostCard post={p} author={postAuthors.get(p.user_id)} />
+                <PostCard
+                  post={p}
+                  author={postAuthors.get(p.user_id)}
+                  viewerId={user.id}
+                  interactions={shortPostInteractions.get(p.id)}
+                />
               </li>
             ))}
           </ul>

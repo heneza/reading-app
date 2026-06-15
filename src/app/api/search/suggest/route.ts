@@ -1,7 +1,22 @@
 import { NextResponse } from 'next/server';
-import { createClient } from '@/utils/supabase/server';
+import { createClient } from '@supabase/supabase-js';
 
 export const dynamic = 'force-dynamic';
+
+const supabase = createClient(
+  process.env.NEXT_PUBLIC_SUPABASE_URL!,
+  process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!,
+  {
+    auth: {
+      autoRefreshToken: false,
+      persistSession: false,
+    },
+  }
+);
+
+const CACHE_HEADERS = {
+  'Cache-Control': 'public, max-age=30, stale-while-revalidate=300',
+};
 
 type Suggestion = {
   type: 'book' | 'author' | 'user' | 'post';
@@ -26,9 +41,7 @@ export async function GET(req: Request) {
   const filterParam = url.searchParams.get('filter') ?? 'all';
   const filter = FILTERS.has(filterParam) ? filterParam : 'all';
 
-  if (q.length < 2) return NextResponse.json({ items: [] });
-
-  const supabase = createClient();
+  if (q.length < 2) return NextResponse.json({ items: [] }, { headers: CACHE_HEADERS });
   const tasks: PromiseLike<Suggestion[]>[] = [];
 
   if (filter === 'all' || filter === 'books') {
@@ -146,5 +159,5 @@ export async function GET(req: Request) {
     })
     .slice(0, 10);
 
-  return NextResponse.json({ items });
+  return NextResponse.json({ items }, { headers: CACHE_HEADERS });
 }

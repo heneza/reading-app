@@ -39,6 +39,7 @@ export default function SearchSuggestBox({
   const [highlight, setHighlight] = useState(-1);
   const [pending, startTransition] = useTransition();
   const blurTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const suggestionCache = useRef(new Map<string, Suggestion[]>());
   const router = useRouter();
 
   const trimmed = query.trim();
@@ -60,6 +61,15 @@ export default function SearchSuggestBox({
       return;
     }
 
+    const cacheKey = `${filter}:${trimmed.toLowerCase()}`;
+    const cached = suggestionCache.current.get(cacheKey);
+    if (cached) {
+      setItems(cached);
+      setLoading(false);
+      setHighlight(-1);
+      return;
+    }
+
     const controller = new AbortController();
     const timer = setTimeout(async () => {
       setLoading(true);
@@ -70,7 +80,9 @@ export default function SearchSuggestBox({
         });
         if (!res.ok) return;
         const data = await res.json();
-        setItems(Array.isArray(data.items) ? data.items.slice(0, 10) : []);
+        const nextItems = Array.isArray(data.items) ? data.items.slice(0, 10) : [];
+        suggestionCache.current.set(cacheKey, nextItems);
+        setItems(nextItems);
         setHighlight(-1);
       } catch {
         if (!controller.signal.aborted) setItems([]);

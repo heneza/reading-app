@@ -5,6 +5,7 @@ import { timeAgo } from '@/lib/time';
 import PostEditToggle from '@/components/PostEditToggle';
 import PendingButton from '@/components/PendingButton';
 import { createClient } from '@/utils/supabase/server';
+import type { PostCardInteractions } from '@/lib/post-interactions';
 import {
   deletePost,
   reactToPost,
@@ -19,34 +20,63 @@ export default async function PostCard({
   canDelete = false,
   showAuthor = true,
   repostedBy = null,
+  viewerId,
+  interactions,
 }: {
   post: any;
   author?: any;
   canDelete?: boolean;
   showAuthor?: boolean;
   repostedBy?: string | null;
+  viewerId?: string | null;
+  interactions?: PostCardInteractions;
 }) {
-  const supabase = createClient();
-  const {
-    data: { user },
-  } = await supabase.auth.getUser();
+  let activeViewerId = viewerId;
+  let reactions = interactions?.reactions;
+  let comments = interactions?.comments;
+  let reposters = interactions?.reposters;
 
-  const [{ data: rx }, { data: cm }, { data: rp }] = await Promise.all([
-    supabase.from('post_reactions').select('user_id, type').eq('post_id', post.id),
-    supabase.from('post_comments').select('id, user_id, body, created_at').eq('post_id', post.id).order('created_at', { ascending: true }),
-    supabase.from('post_reposts').select('user_id').eq('post_id', post.id),
-  ]);
-  const reactions = rx ?? [];
-  const comments = cm ?? [];
-  const reposters = rp ?? [];
-  const likes = reactions.filter((r: any) => r.type === 'like').length;
-  const myReaction = user ? reactions.find((r: any) => r.user_id === user.id)?.type ?? null : null;
-  const iReposted = user ? reposters.some((r: any) => r.user_id === user.id) : false;
+  if (
+    activeViewerId === undefined ||
+    reactions === undefined ||
+    comments === undefined ||
+    reposters === undefined
+  ) {
+    const supabase = createClient();
+    const [userId, rx, cm, rp] = await Promise.all([
+      activeViewerId === undefined
+        ? supabase.auth.getUser().then(({ data: { user } }: any) => user?.id ?? null)
+        : Promise.resolve(activeViewerId),
+      reactions === undefined
+        ? supabase.from('post_reactions').select('user_id, type').eq('post_id', post.id).then(({ data }: any) => data ?? [])
+        : Promise.resolve(reactions),
+      comments === undefined
+        ? supabase.from('post_comments').select('id, user_id, body, created_at').eq('post_id', post.id).order('created_at', { ascending: true }).then(({ data }: any) => data ?? [])
+        : Promise.resolve(comments),
+      reposters === undefined
+        ? supabase.from('post_reposts').select('user_id').eq('post_id', post.id).then(({ data }: any) => data ?? [])
+        : Promise.resolve(reposters),
+    ]);
+    activeViewerId = userId;
+    reactions = rx;
+    comments = cm;
+    reposters = rp;
+  }
+
+  const resolvedViewerId = activeViewerId ?? null;
+  const resolvedReactions = reactions ?? [];
+  const resolvedComments = comments ?? [];
+  const resolvedReposters = reposters ?? [];
+
+  const likes = resolvedReactions.filter((r: any) => r.type === 'like').length;
+  const myReaction = resolvedViewerId ? resolvedReactions.find((r: any) => r.user_id === resolvedViewerId)?.type ?? null : null;
+  const iReposted = resolvedViewerId ? resolvedReposters.some((r: any) => r.user_id === resolvedViewerId) : false;
   const withinHour = Date.now() - new Date(post.created_at).getTime() < 3600000;
 
-  const nameById = new Map<string, any>();
-  const cids = Array.from(new Set(comments.map((c: any) => c.user_id)));
-  if (cids.length) {
+  const nameById = new Map<string, any>(interactions?.commentAuthors ?? []);
+  const cids = Array.from(new Set(resolvedComments.map((c: any) => c.user_id)));
+  if (!interactions?.commentAuthors && cids.length) {
+    const supabase = createClient();
     const { data: profs } = await supabase
       .from('profiles')
       .select('id, username, display_name, avatar_url')
@@ -124,19 +154,19 @@ export default async function PostCard({
         </form>
         <form action={repost} className="ml-auto">
           <input type="hidden" name="postId" value={post.id} />
-          <PendingButton pendingLabel="..." className={pill(iReposted)} title="Repost to your profile">↻ {reposters.length}</PendingButton>
+          <PendingButton pendingLabel="..." className={pill(iReposted)} title="Repost to your profile">↻ {resolvedReposters.length}</PendingButton>
         </form>
       </div>
 
       {/* comments */}
       <details className="mt-2">
         <summary className="cursor-pointer text-xs text-stone-500 hover:text-brand">
-          {comments.length} comment{comments.length === 1 ? '' : 's'}
+          {resolvedComments.length} comment{resolvedComments.length === 1 ? '' : 's'}
         </summary>
         <div className="mt-2 space-y-2 border-t border-stone-100 pt-2">
-          {comments.map((c: any) => {
+          {resolvedComments.map((c: any) => {
             const a = nameById.get(c.user_id);
-            const mineC = c.user_id === user?.id;
+            const mineC = c.user_id === resolvedViewerId;
             return (
               <div key={c.id} className="flex items-start justify-between gap-2 text-sm">
                 <p className="text-stone-700">
@@ -153,7 +183,7 @@ export default async function PostCard({
               </div>
             );
           })}
-          {user && (
+          {resolvedViewerId && (
             <form action={addPostComment} className="flex gap-2">
               <input type="hidden" name="postId" value={post.id} />
               <input name="body" placeholder="Write a comment…" className="flex-1 rounded border border-stone-300 px-3 py-1 text-sm" />

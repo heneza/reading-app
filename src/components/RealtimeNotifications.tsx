@@ -9,14 +9,12 @@ type Toast = { id: string; text: string; href: string };
 
 export default function RealtimeNotifications({
   meId,
-  friends,
 }: {
   meId: string;
-  friends: Friend[];
 }) {
   const [toasts, setToasts] = useState<Toast[]>([]);
   const router = useRouter();
-  const friendMap = useRef(new Map(friends.map((f) => [f.id, f.username])));
+  const friendMap = useRef(new Map<string, string>());
 
   function push(text: string, href: string) {
     const id = `${Date.now()}-${Math.random()}`;
@@ -26,56 +24,89 @@ export default function RealtimeNotifications({
 
   useEffect(() => {
     const supabase = createClient();
-    const friendIds = friends.map((f) => f.id);
+    let active = true;
+    let channel: ReturnType<ReturnType<typeof createClient>['channel']> | null = null;
 
-    const channel = supabase.channel('notify');
+    async function loadFriends(): Promise<Friend[]> {
+      const [{ data: outRows }, { data: inRows }] = await Promise.all([
+        supabase.from('follows').select('followee_id').eq('follower_id', meId),
+        supabase.from('follows').select('follower_id').eq('followee_id', meId),
+      ]);
+      const out = new Set((outRows ?? []).map((row: any) => row.followee_id));
+      const friendIds = (inRows ?? [])
+        .map((row: any) => row.follower_id)
+        .filter((id: string) => out.has(id));
 
-    // Incoming direct messages (RLS guarantees these are addressed to me).
-    channel.on(
-      'postgres_changes',
-      { event: 'INSERT', schema: 'public', table: 'messages', filter: `recipient_id=eq.${meId}` },
-      async (payload: any) => {
-        const senderId = payload.new?.sender_id;
-        if (!senderId || senderId === meId) return;
-        let uname = friendMap.current.get(senderId);
-        if (!uname) {
-          const { data } = await supabase.from('profiles').select('username').eq('id', senderId).maybeSingle();
-          uname = data?.username ?? undefined;
-        }
-        if (!uname) return;
-        // Don't toast if I'm already looking at that conversation.
-        if (typeof window !== 'undefined' && window.location.pathname === `/messages/${uname}`) return;
-        push(`New message from @${uname}`, `/messages/${uname}`);
-      }
-    );
+      if (friendIds.length === 0) return [];
 
-    // Friends' new posts + reposts (only subscribe if I have friends).
-    if (friendIds.length) {
-      const inList = `(${friendIds.join(',')})`;
-      channel.on(
-        'postgres_changes',
-        { event: 'INSERT', schema: 'public', table: 'posts', filter: `user_id=in.${inList}` },
-        (payload: any) => {
-          if (payload.new?.status !== 'published') return;
-          const uname = friendMap.current.get(payload.new.user_id);
-          if (!uname) return;
-          push(`@${uname} posted`, `/u/${uname}`);
-        }
-      );
-      channel.on(
-        'postgres_changes',
-        { event: 'INSERT', schema: 'public', table: 'post_reposts', filter: `user_id=in.${inList}` },
-        (payload: any) => {
-          const uname = friendMap.current.get(payload.new?.user_id);
-          if (!uname) return;
-          push(`@${uname} reposted`, `/u/${uname}`);
-        }
-      );
+      const { data: profiles } = await supabase
+        .from('profiles')
+        .select('id, username')
+        .in('id', friendIds);
+
+      return (profiles ?? []).map((profile: any) => ({
+        id: profile.id,
+        username: profile.username,
+      }));
     }
 
-    channel.subscribe();
+    loadFriends().then((loadedFriends) => {
+      if (!active) return;
+      friendMap.current = new Map(loadedFriends.map((friend) => [friend.id, friend.username]));
+      const friendIds = loadedFriends.map((friend) => friend.id);
+      channel = supabase.channel('notify');
+
+      // Incoming direct messages (RLS guarantees these are addressed to me).
+      channel.on(
+        'postgres_changes',
+        { event: 'INSERT', schema: 'public', table: 'messages', filter: `recipient_id=eq.${meId}` },
+        async (payload: any) => {
+          const senderId = payload.new?.sender_id;
+          if (!senderId || senderId === meId) return;
+          let uname = friendMap.current.get(senderId);
+          if (!uname) {
+            const { data } = await supabase.from('profiles').select('username').eq('id', senderId).maybeSingle();
+            uname = data?.username ?? undefined;
+          }
+          if (!uname) return;
+          // Don't toast if I'm already looking at that conversation.
+          if (typeof window !== 'undefined' && window.location.pathname === `/messages/${uname}`) return;
+          push(`New message from @${uname}`, `/messages/${uname}`);
+        }
+      );
+
+      // Friends' new posts + reposts (only subscribe if I have friends).
+      if (friendIds.length) {
+        const inList = `(${friendIds.join(',')})`;
+        channel.on(
+          'postgres_changes',
+          { event: 'INSERT', schema: 'public', table: 'posts', filter: `user_id=in.${inList}` },
+          (payload: any) => {
+            if (payload.new?.status !== 'published') return;
+            const uname = friendMap.current.get(payload.new.user_id);
+            if (!uname) return;
+            push(`@${uname} posted`, `/u/${uname}`);
+          }
+        );
+        channel.on(
+          'postgres_changes',
+          { event: 'INSERT', schema: 'public', table: 'post_reposts', filter: `user_id=in.${inList}` },
+          (payload: any) => {
+            const uname = friendMap.current.get(payload.new?.user_id);
+            if (!uname) return;
+            push(`@${uname} reposted`, `/u/${uname}`);
+          }
+        );
+      }
+
+      channel.subscribe();
+    }).catch(() => {
+      /* Realtime notifications are best-effort; page rendering should continue. */
+    });
+
     return () => {
-      supabase.removeChannel(channel);
+      active = false;
+      if (channel) supabase.removeChannel(channel);
     };
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [meId]);
