@@ -6,7 +6,8 @@ import { createClient } from '@/utils/supabase/server';
 export async function GET(request: Request) {
   const { searchParams, origin } = new URL(request.url);
   const code = searchParams.get('code');
-  const next = searchParams.get('next') ?? '/';
+  const rawNext = searchParams.get('next') ?? '/';
+  const next = rawNext.startsWith('/') && !rawNext.startsWith('//') ? rawNext : '/';
 
   if (code) {
     const supabase = createClient();
@@ -15,7 +16,7 @@ export async function GET(request: Request) {
       // First-time OAuth users go through the same /welcome onboarding.
       const { data: { user } } = await supabase.auth.getUser();
       let dest = next;
-      if (user) {
+      if (user && !next.startsWith('/reset-password')) {
         const { data: p } = await supabase.from('profiles').select('onboarded').eq('id', user.id).maybeSingle();
         if (p && p.onboarded === false) dest = '/welcome';
       }

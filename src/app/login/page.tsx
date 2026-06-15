@@ -106,6 +106,11 @@ export default function LoginPage({
         <form action={login} className="space-y-3">
           <input name="identifier" type="text" required autoCapitalize="none" autoComplete="username" autoCorrect="off" placeholder="Email or username" className={inputCls} />
           <input name="password" type="password" required autoComplete="current-password" placeholder="Password" className={inputCls} />
+          <div className="-mt-1 text-right">
+            <Link href="/reset-password" className="text-sm font-medium text-brand hover:underline">
+              Forgot password?
+            </Link>
+          </div>
           {turnstileSiteKey && (
             <Turnstile siteKey={turnstileSiteKey} />
           )}

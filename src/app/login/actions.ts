@@ -11,6 +11,18 @@ function getCaptchaToken(formData: FormData) {
   return String(formData.get('cf-turnstile-response') ?? '').trim() || null;
 }
 
+function safeInternalPath(raw: FormDataEntryValue | null, fallback: string) {
+  const path = String(raw ?? '').trim();
+  if (!path || !path.startsWith('/') || path.startsWith('//')) return fallback;
+  return path;
+}
+
+function redirectWithParam(path: string, key: 'error' | 'message', value: string) {
+  const url = new URL(path, 'https://reading-app.local');
+  url.searchParams.set(key, value);
+  redirect(`${url.pathname}${url.search}`);
+}
+
 function signupError(message: string, fields: { username?: string; dob?: string; gender?: string } = {}) {
   const params = new URLSearchParams({ mode: 'signup', error: message });
   if (fields.username) params.set('username', fields.username);
@@ -107,6 +119,56 @@ export async function login(formData: FormData) {
     if (prof && prof.onboarded === false) redirect('/welcome');
   }
   redirect('/');
+}
+
+export async function requestPasswordReset(formData: FormData) {
+  const supabase = createClient();
+  const email = String(formData.get('email') ?? '').trim();
+  const next = safeInternalPath(formData.get('next'), '/reset-password');
+  const base = process.env.NEXT_PUBLIC_SITE_URL ?? headers().get('origin') ?? 'https://reading-app-sandy.vercel.app';
+  const captchaToken = getCaptchaToken(formData);
+
+  if (captchaToken === null) {
+    redirectWithParam(next, 'error', 'Complete the verification, then try again.');
+  }
+
+  if (!/^[^@\s]+@[^@\s]+\.[^@\s]+$/.test(email)) {
+    redirectWithParam(next, 'error', 'Enter the email address connected to your account.');
+  }
+
+  const { error } = await supabase.auth.resetPasswordForEmail(email, {
+    redirectTo: `${base}/auth/callback?next=/reset-password/update`,
+    captchaToken: captchaToken || undefined,
+  });
+
+  if (error) {
+    console.error('Password reset request failed:', error.message);
+  }
+
+  redirectWithParam(next, 'message', 'If that email belongs to an account, a reset link is on its way.');
+}
+
+export async function updatePassword(formData: FormData) {
+  const supabase = createClient();
+  const password = String(formData.get('password') ?? '');
+  const confirm = String(formData.get('confirm') ?? '');
+
+  if (password.length < 8) {
+    redirect('/reset-password/update?error=' + encodeURIComponent('Use at least 8 characters.'));
+  }
+  if (password !== confirm) {
+    redirect('/reset-password/update?error=' + encodeURIComponent('Passwords do not match.'));
+  }
+
+  const { error } = await supabase.auth.updateUser({ password });
+  if (error) {
+    console.error('Password update failed:', error.message);
+    redirect('/reset-password/update?error=' + encodeURIComponent('Could not update your password. Open the latest reset link and try again.'));
+  }
+
+  await supabase.auth.signOut();
+  revalidatePath('/', 'layout');
+  redirect('/login?message=' + encodeURIComponent('Password updated. Log in with your new password.'));
 }
 
 export async function signup(formData: FormData) {

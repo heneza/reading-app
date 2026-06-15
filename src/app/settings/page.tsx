@@ -1,13 +1,14 @@
 import Link from 'next/link';
 import { redirect } from 'next/navigation';
 import { createClient } from '@/utils/supabase/server';
-import { signout } from '@/app/login/actions';
+import { requestPasswordReset, signout } from '@/app/login/actions';
 import { setVisibility } from '@/app/actions/profile';
 import { setAiEnabled, setEmailPreferences } from '@/app/actions/account';
 import DeleteAccount from './DeleteAccount';
 import { timeAgo } from '@/lib/time';
 import ReadReceiptsToggle from './ReadReceiptsToggle';
 import ThemeToggle from './ThemeToggle';
+import Turnstile from '@/components/Turnstile';
 
 export const dynamic = 'force-dynamic';
 
@@ -18,7 +19,11 @@ const SUPPORT = [
 
 const sectionH = 'mb-3 text-sm font-semibold uppercase tracking-wide text-stone-400';
 
-export default async function SettingsPage() {
+export default async function SettingsPage({
+  searchParams,
+}: {
+  searchParams: { error?: string; message?: string };
+}) {
   const supabase = createClient();
   const {
     data: { user },
@@ -81,6 +86,13 @@ export default async function SettingsPage() {
         <h1 className="text-2xl font-bold">Settings</h1>
         <p className="text-sm text-stone-500">@{profile?.username}</p>
       </div>
+
+      {searchParams.error && (
+        <p className="rounded bg-red-50 p-3 text-sm text-red-700">{searchParams.error}</p>
+      )}
+      {searchParams.message && (
+        <p className="rounded bg-green-50 p-3 text-sm text-green-700">{searchParams.message}</p>
+      )}
 
       {/* Account */}
       <section>
@@ -196,6 +208,21 @@ export default async function SettingsPage() {
             recipient.
           </p>
           <ReadReceiptsToggle initial={profile?.read_receipts !== false} />
+
+          <form action={requestPasswordReset} className="space-y-2 border-t border-stone-100 pt-3">
+            <input type="hidden" name="email" value={user.email ?? ''} />
+            <input type="hidden" name="next" value="/settings" />
+            <p>
+              Need to change your password? Send a reset link to{' '}
+              <span className="font-medium text-stone-700">{user.email}</span>.
+            </p>
+            {process.env.NEXT_PUBLIC_TURNSTILE_SITE_KEY && (
+              <Turnstile siteKey={process.env.NEXT_PUBLIC_TURNSTILE_SITE_KEY} />
+            )}
+            <button className="rounded border border-stone-300 px-4 py-2 text-sm font-medium text-stone-700 hover:bg-stone-100">
+              Send password reset email
+            </button>
+          </form>
 
           <form action={setVisibility} className="space-y-2 border-t border-stone-100 pt-3">
             <label className="flex items-center justify-between gap-3">
