@@ -1,19 +1,31 @@
 import Link from 'next/link';
+import { redirect } from 'next/navigation';
 import { login, signup, signInWithGoogle } from './actions';
 import ClearPasswordFields from '@/components/ClearPasswordFields';
 import PendingButton from '@/components/PendingButton';
 import Turnstile from '@/components/Turnstile';
+import { createClient } from '@/utils/supabase/server';
 
 const inputCls = 'w-full rounded border border-slate-300 px-3 py-2';
 
-export default function LoginPage({
+function safeNext(raw?: string) {
+  if (!raw || !raw.startsWith('/') || raw.startsWith('//')) return '/';
+  return raw;
+}
+
+export default async function LoginPage({
   searchParams,
 }: {
-  searchParams: { error?: string; message?: string; mode?: string; username?: string; dob?: string; gender?: string };
+  searchParams: { error?: string; message?: string; mode?: string; username?: string; dob?: string; gender?: string; next?: string };
 }) {
   const isSignup = searchParams.mode === 'signup';
   const isConfirmationNotice = !isSignup && Boolean(searchParams.message);
   const turnstileSiteKey = process.env.NEXT_PUBLIC_TURNSTILE_SITE_KEY;
+  const next = safeNext(searchParams.next);
+
+  const supabase = createClient();
+  const { data: { user } } = await supabase.auth.getUser();
+  if (user && !isConfirmationNotice) redirect(next);
 
   return (
     <div className="mx-auto max-w-sm">
@@ -104,6 +116,7 @@ export default function LoginPage({
         </form>
       ) : (
         <form action={login} className="space-y-3">
+          <input type="hidden" name="next" value={next} />
           <input name="identifier" type="text" required autoCapitalize="none" autoComplete="username" autoCorrect="off" placeholder="Email or username" className={inputCls} />
           <input name="password" type="password" required autoComplete="current-password" placeholder="Password" className={inputCls} />
           <div className="-mt-1 text-right">

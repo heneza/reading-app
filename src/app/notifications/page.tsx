@@ -13,7 +13,7 @@ export default async function NotificationsPage() {
   const {
     data: { user },
   } = await supabase.auth.getUser();
-  if (!user) redirect('/login');
+  if (!user) redirect('/login?next=/notifications');
 
   const { data: notifsData } = await supabase
     .from('notifications')

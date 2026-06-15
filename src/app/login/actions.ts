@@ -83,10 +83,11 @@ export async function login(formData: FormData) {
   const supabase = createClient();
   const identifier = String(formData.get('identifier') ?? formData.get('email') ?? '').trim();
   const password = String(formData.get('password') ?? '');
+  const next = safeInternalPath(formData.get('next'), '/');
   const captchaToken = getCaptchaToken(formData);
 
   if (captchaToken === null) {
-    redirect('/login?error=' + encodeURIComponent('Complete the verification, then try again.'));
+    redirect('/login?next=' + encodeURIComponent(next) + '&error=' + encodeURIComponent('Complete the verification, then try again.'));
   }
 
   // If they typed a username (no "@"), resolve it to the account email.
@@ -106,10 +107,10 @@ export async function login(formData: FormData) {
 
   if (!email || error) {
     if (error?.message?.toLowerCase().includes('captcha')) {
-      redirect('/login?error=' + encodeURIComponent('Verification failed. Refresh the page and try the Cloudflare check again.'));
+      redirect('/login?next=' + encodeURIComponent(next) + '&error=' + encodeURIComponent('Verification failed. Refresh the page and try the Cloudflare check again.'));
     }
     // One generic message for every failure (no account enumeration).
-    redirect('/login?error=' + encodeURIComponent('Invalid login — check your email/username and password.'));
+    redirect('/login?next=' + encodeURIComponent(next) + '&error=' + encodeURIComponent('Invalid login — check your email/username and password.'));
   }
   revalidatePath('/', 'layout');
   // Send users who never finished onboarding to /welcome.
@@ -118,7 +119,7 @@ export async function login(formData: FormData) {
     const { data: prof } = await supabase.from('profiles').select('onboarded').eq('id', signedIn.id).maybeSingle();
     if (prof && prof.onboarded === false) redirect('/welcome');
   }
-  redirect('/');
+  redirect(next);
 }
 
 export async function requestPasswordReset(formData: FormData) {

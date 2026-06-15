@@ -57,3 +57,32 @@ export async function GET() {
     { headers: { 'Cache-Control': 'private, no-store' } }
   );
 }
+
+export async function POST(req: Request) {
+  const supabase = createClient();
+  const {
+    data: { user },
+  } = await supabase.auth.getUser();
+
+  if (!user) return NextResponse.json({ ok: false }, { status: 401 });
+
+  const body = await req.json().catch(() => ({}));
+  const id = typeof body.id === 'string' ? body.id : null;
+
+  if (id) {
+    await supabase
+      .from('notifications')
+      .update({ read: true })
+      .eq('user_id', user.id)
+      .eq('id', id);
+  } else {
+    await supabase
+      .from('notifications')
+      .update({ read: true })
+      .eq('user_id', user.id)
+      .eq('read', false)
+      .neq('type', 'article_pending');
+  }
+
+  return NextResponse.json({ ok: true });
+}
