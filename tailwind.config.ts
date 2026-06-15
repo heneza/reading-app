@@ -2,7 +2,7 @@ import type { Config } from 'tailwindcss';
 
 // =====================================================================
 // DESIGN TOKENS — change these few values to re-skin the whole app.
-// Palette: cinematic — luminous crimson on a dark, gradient-lit canvas.
+// Palette: cinematic — burgundy crimson on a dark, gradient-lit canvas.
 // (Layout/structure is untouched; only what the colours MEAN changed.)
 // =====================================================================
 
@@ -69,11 +69,11 @@ const config: Config = {
         // Dark page canvas (gradient glow is added in globals.css).
         page: '#0b0809',
 
-        // Primary brand — luminous crimson that pops on dark.
+        // Primary brand — burgundy red shared with the original light mode.
         brand: {
-          DEFAULT: '#c8324a',
-          dark: '#a3283c',
-          soft: '#2a141a', // dark wine fill for tags & hovers
+          DEFAULT: '#a51f36',
+          dark: '#7f1429',
+          soft: '#271116', // dark wine fill for tags & hovers
         },
 
         accent: {

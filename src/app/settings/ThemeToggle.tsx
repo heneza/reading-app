@@ -8,7 +8,7 @@ const OPTIONS: { value: Theme; label: string; detail: string; swatch: string }[]
   {
     value: 'dark',
     label: 'Dark',
-    detail: 'Cinematic crimson',
+    detail: 'Cinematic burgundy',
     swatch: 'bg-[#14100f]',
   },
   {
