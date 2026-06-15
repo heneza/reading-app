@@ -12,6 +12,8 @@ import PostComposer from '@/components/PostComposer';
 import PostCard from '@/components/PostCard';
 import PendingButton from '@/components/PendingButton';
 import { loadPostCardInteractions } from '@/lib/post-interactions';
+import TasteMatchBadge from '@/components/TasteMatchBadge';
+import { computeUserTasteMatch } from '@/lib/taste';
 
 function linkifyMentions(text: string, valid: Set<string>): React.ReactNode[] {
   const parts: React.ReactNode[] = [];
@@ -122,6 +124,13 @@ export default async function ProfilePage({
   const canSee = (vis: string) => isOwnProfile || vis === 'public' || (vis === 'friends' && isFriend);
   const canLikes = canSee(profile.likes_visibility ?? 'public');
   const canReplies = canSee(profile.comments_visibility ?? 'public');
+  const tasteMatchPromise = computeUserTasteMatch(
+    supabase,
+    user?.id,
+    profile.id,
+    list,
+    favGenres
+  );
 
   async function loadPosts(ids: string[]) {
     if (!ids.length) return { posts: [] as any[], authors: new Map<string, any>() };
@@ -256,6 +265,7 @@ export default async function ProfilePage({
   const connHref = (t: string) => `/u/${profile.username}/connections?type=${t}`;
   const tabHref = (t: string) => `/u/${profile.username}?tab=${t}`;
   const TAB_LABEL: Record<string, string> = { posts: 'Posts', likes: 'Likes', replies: 'Replies', reviews: 'Reviews', diary: 'Diary' };
+  const tasteMatch = await tasteMatchPromise;
 
   return (
     <div>
@@ -293,7 +303,7 @@ export default async function ProfilePage({
             {/* Right: actions + socials above the reading bars */}
             <div className="flex flex-shrink-0 flex-col items-end gap-3">
               {((!isOwnProfile && user) || profile.website || profile.instagram || profile.twitter || profile.spotify_url) && (
-                <div className="flex items-center gap-3">
+                <div className="flex flex-wrap items-center justify-end gap-2 sm:gap-3">
                   {!isOwnProfile && user && (
                     <>
                       <Link href={`/messages/${profile.username}`} title="Message" aria-label="Message"
@@ -310,6 +320,12 @@ export default async function ProfilePage({
                           {isFollowing ? 'Following' : 'Follow'}
                         </PendingButton>
                       </form>
+                      {tasteMatch && (
+                        <TasteMatchBadge
+                          text={`Taste match ${tasteMatch.percent}%`}
+                          title={tasteMatch.title}
+                        />
+                      )}
                     </>
                   )}
                   {profile.website && /^https?:\/\//i.test(profile.website) && <a href={profile.website} target="_blank" rel="noopener noreferrer" className="text-sm text-brand hover:underline">Website</a>}

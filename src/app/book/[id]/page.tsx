@@ -19,6 +19,8 @@ import { addBookToList } from '@/app/actions/lists';
 import { genreName } from '@/lib/genres';
 import StarRating from '@/components/StarRating';
 import { timeAgo, formatDate } from '@/lib/time';
+import TasteMatchBadge from '@/components/TasteMatchBadge';
+import { computeBookTasteMatch } from '@/lib/taste';
 
 // Always render fresh (no caching) so data and login state are current.
 export const dynamic = 'force-dynamic';
@@ -56,6 +58,12 @@ export default async function BookPage({ params }: { params: { id: string } }) {
   const myLists: { id: string; title: string }[] = (listsRes.data ?? []) as any;
   const reviewList = reviewsRes.data ?? [];
   const reviewsError = reviewsRes.error ?? null;
+  const tasteMatchPromise = computeBookTasteMatch(
+    supabase,
+    user?.id,
+    book.id,
+    bookGenres
+  );
 
   // Which of my lists already contain this book.
   const inLists = new Set<string>();
@@ -107,6 +115,7 @@ export default async function BookPage({ params }: { params: { id: string } }) {
   }
 
   const cover = coverUrl(book.cover_id, 'L');
+  const tasteMatch = await tasteMatchPromise;
 
   return (
     <div>
@@ -116,7 +125,12 @@ export default async function BookPage({ params }: { params: { id: string } }) {
           {cover && <Image src={cover} alt={book.title} width={140} height={210} className="h-full w-full object-cover" />}
         </div>
         <div className="flex-1">
-          <h1 className="text-2xl font-bold">{book.title}</h1>
+          <div className="mb-1 flex flex-wrap items-center gap-2">
+            <h1 className="text-2xl font-bold">{book.title}</h1>
+            {tasteMatch && (
+              <TasteMatchBadge text={`${tasteMatch.percent}% for you`} title={tasteMatch.title} />
+            )}
+          </div>
           <p className="mb-2 text-slate-500">{book.author}</p>
           {bookGenres.length > 0 && (
             <div className="mb-4 flex flex-wrap gap-2">
