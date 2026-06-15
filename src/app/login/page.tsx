@@ -1,5 +1,6 @@
 import Link from 'next/link';
 import { login, signup, signInWithGoogle } from './actions';
+import ClearPasswordFields from '@/components/ClearPasswordFields';
 import PendingButton from '@/components/PendingButton';
 import Turnstile from '@/components/Turnstile';
 
@@ -16,6 +17,7 @@ export default function LoginPage({
 
   return (
     <div className="mx-auto max-w-sm">
+      <ClearPasswordFields active={Boolean(searchParams.error || searchParams.message)} />
       <h1 className="mb-1 text-2xl font-bold">{isSignup ? 'Create your account' : 'Welcome back'}</h1>
       <p className="mb-6 text-sm text-slate-500">
         {isSignup ? 'Join Reading App and start your shelf.' : 'Log in to your shelf.'}

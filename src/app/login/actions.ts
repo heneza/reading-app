@@ -22,11 +22,18 @@ function signupError(message: string, fields: { username?: string; dob?: string;
 function friendlySignupError(message: string) {
   const lower = message.toLowerCase();
   if (lower.includes('captcha')) return 'Verification failed. Refresh the page and try the Cloudflare check again.';
+  if ((lower.includes('signup') || lower.includes('sign up')) && lower.includes('disabled')) {
+    return 'Email signup is disabled in Supabase. Enable the Email provider and try again.';
+  }
+  if (lower.includes('rate limit')) return 'Too many signup attempts. Wait a minute, then try again.';
   if (lower.includes('already') || lower.includes('registered') || lower.includes('exists')) {
     return 'That email may already have an account. Try logging in or use another email.';
   }
+  if (lower.includes('invalid') && lower.includes('email')) {
+    return 'Supabase rejected that email address. Try another email you can access.';
+  }
   if (lower.includes('password')) return 'Choose a stronger password and try again.';
-  if (lower.includes('email')) return 'Check that email address and try again.';
+  if (lower.includes('email')) return 'Supabase rejected that email. Try another email or check the Auth logs.';
   return 'Could not create your account. Please try again.';
 }
 
@@ -141,7 +148,10 @@ export async function signup(formData: FormData) {
       data: { username, date_of_birth: dob, gender: g },
     },
   });
-  if (error) err(friendlySignupError(error.message));
+  if (error) {
+    console.error('Signup failed:', error.message);
+    err(friendlySignupError(error.message));
+  }
 
   await sendWelcomeEmail(email, username);
 
