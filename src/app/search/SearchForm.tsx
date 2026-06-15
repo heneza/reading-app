@@ -1,6 +1,7 @@
 'use client';
 
 import { useRouter } from 'next/navigation';
+import SearchSuggestBox from '@/components/SearchSuggestBox';
 
 export default function SearchForm({
   q,
@@ -20,39 +21,29 @@ export default function SearchForm({
   }
 
   return (
-    <form
-      onSubmit={(e) => {
-        e.preventDefault();
-        const fd = new FormData(e.currentTarget);
-        go(String(fd.get('q') ?? ''), String(fd.get('filter') ?? 'books'));
-      }}
-      className="mb-6 flex gap-2"
-    >
+    <div className="mb-6 flex flex-col gap-2 sm:flex-row">
       <select
         name="filter"
         defaultValue={filter}
         onChange={(e) => {
-          // Re-run the search immediately with the new filter.
-          const form = e.currentTarget.form!;
-          const fd = new FormData(form);
-          go(String(fd.get('q') ?? ''), e.currentTarget.value);
+          go(q, e.currentTarget.value);
         }}
-        className="min-w-[7rem]"
+        className="w-full sm:w-auto sm:min-w-[7rem]"
       >
         <option value="books">Books</option>
         <option value="authors">Authors</option>
         <option value="users">Users</option>
         <option value="posts">Posts</option>
       </select>
-      <input
-        name="q"
+      <SearchSuggestBox
+        key={filter}
         defaultValue={q}
+        filter={filter}
         placeholder="Search…"
-        className="flex-1 rounded border border-slate-300 px-3 py-2"
+        className="flex min-w-0 flex-1 gap-2"
+        inputClassName="min-w-0 flex-1 rounded border border-slate-300 px-3 py-2"
+        showButton
       />
-      <button className="rounded bg-brand px-4 py-2 font-medium text-white hover:opacity-90">
-        Search
-      </button>
-    </form>
+    </div>
   );
 }

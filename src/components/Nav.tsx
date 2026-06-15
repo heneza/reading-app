@@ -2,6 +2,8 @@ import Link from 'next/link';
 import { createClient } from '@/utils/supabase/server';
 import { signout } from '@/app/login/actions';
 import Avatar from '@/components/Avatar';
+import SearchSuggestBox from '@/components/SearchSuggestBox';
+import PendingButton from '@/components/PendingButton';
 
 export default async function Nav() {
   const supabase = createClient();
@@ -38,14 +40,11 @@ export default async function Nav() {
           Reading App
         </Link>
 
-        {/* Search box */}
-        <form action="/search" className="hidden flex-1 sm:block">
-          <input
-            name="q"
-            placeholder="Search books, authors, users…"
-            className="w-full rounded-full border border-slate-200 bg-slate-50 px-4 py-2 text-sm transition focus:border-brand focus:bg-white focus:outline-none"
-          />
-        </form>
+        <SearchSuggestBox
+          className="hidden flex-1 sm:block"
+          inputClassName="w-full rounded-full border border-slate-200 bg-slate-50 px-4 py-2 text-sm transition focus:border-brand focus:bg-white focus:outline-none"
+          placeholder="Search books, authors, users..."
+        />
 
         <div className="ml-auto flex min-w-0 items-center gap-1 text-sm sm:gap-2">
           {user && (
@@ -109,7 +108,7 @@ export default async function Nav() {
                     Settings
                   </Link>
                   <form action={signout}>
-                    <button className={`w-full text-left ${item}`}>Sign out</button>
+                    <PendingButton pendingLabel="Signing out..." className={`w-full text-left ${item}`}>Sign out</PendingButton>
                   </form>
                 </div>
               </div>

@@ -10,6 +10,7 @@ import Avatar from '@/components/Avatar';
 import ShareButton from '@/components/ShareButton';
 import PostComposer from '@/components/PostComposer';
 import PostCard from '@/components/PostCard';
+import PendingButton from '@/components/PendingButton';
 
 function linkifyMentions(text: string, valid: Set<string>): React.ReactNode[] {
   const parts: React.ReactNode[] = [];
@@ -241,6 +242,12 @@ export default async function ProfilePage({
       recentRead.push({ book_id: e.book_id, title: e.books?.title, cover_id: e.books?.cover_id, rating: e.rating });
     });
   const recentReadRow = recentRead.slice(0, 4);
+  const currentlyReading = list.filter((e: any) => e.status === 'reading').slice(0, 2);
+  const avgRating = ratingValues.length
+    ? ratingValues.reduce((sum: number, rating: number) => sum + rating, 0) / ratingValues.length
+    : null;
+  const signatureGenres = favGenres.slice(0, 3).map((slug: string) => genreName(slug));
+  const hasReaderSignature = signatureGenres.length > 0 || currentlyReading.length > 0 || favs.length > 0 || avgRating != null;
 
   const grouped = STATUS_ORDER.map((status) => ({ status, items: list.filter((e: any) => e.status === status) })).filter((g) => g.items.length > 0);
   const connHref = (t: string) => `/u/${profile.username}/connections?type=${t}`;
@@ -293,7 +300,12 @@ export default async function ProfilePage({
                       <form action={isFollowing ? unfollowUser : followUser}>
                         <input type="hidden" name="followeeId" value={profile.id} />
                         <input type="hidden" name="username" value={profile.username} />
-                        <button className={isFollowing ? 'rounded-full border border-stone-300 px-5 py-1.5 text-sm font-medium text-stone-700 transition hover:bg-stone-50' : 'rounded-full bg-brand px-5 py-1.5 text-sm font-medium text-white transition hover:opacity-90'}>{isFollowing ? 'Following' : 'Follow'}</button>
+                        <PendingButton
+                          pendingLabel={isFollowing ? 'Unfollowing...' : 'Following...'}
+                          className={isFollowing ? 'rounded-full border border-stone-300 px-5 py-1.5 text-sm font-medium text-stone-700 transition hover:bg-stone-50' : 'rounded-full bg-brand px-5 py-1.5 text-sm font-medium text-white transition hover:opacity-90'}
+                        >
+                          {isFollowing ? 'Following' : 'Follow'}
+                        </PendingButton>
                       </form>
                     </>
                   )}
@@ -410,6 +422,65 @@ export default async function ProfilePage({
           </section>
         </div>
         <aside className="space-y-4 sm:w-80 sm:flex-shrink-0">
+          <div className="rounded-lg border border-stone-200 bg-white p-3">
+            <div className="mb-2 flex items-center justify-between gap-2">
+              <h3 className="text-sm font-semibold text-stone-700">Reader signature</h3>
+              {isOwnProfile && <Link href="/settings/profile" className="text-xs text-brand hover:underline">Edit →</Link>}
+            </div>
+            {hasReaderSignature ? (
+              <div className="space-y-3 text-sm">
+                {signatureGenres.length > 0 && (
+                  <div>
+                    <p className="mb-1 text-[11px] font-semibold uppercase tracking-wide text-stone-400">Taste</p>
+                    <div className="flex flex-wrap gap-1.5">
+                      {signatureGenres.map((name) => (
+                        <span key={name} className="rounded-full bg-brand-soft px-2 py-0.5 text-xs font-medium text-brand">{name}</span>
+                      ))}
+                    </div>
+                  </div>
+                )}
+                {currentlyReading.length > 0 && (
+                  <div>
+                    <p className="mb-1 text-[11px] font-semibold uppercase tracking-wide text-stone-400">Current chapter</p>
+                    <ul className="space-y-1">
+                      {currentlyReading.map((e: any) => (
+                        <li key={e.book_id}>
+                          <Link href={`/book/${e.book_id}`} className="line-clamp-1 text-stone-700 hover:text-brand hover:underline">
+                            {e.books?.title}
+                          </Link>
+                        </li>
+                      ))}
+                    </ul>
+                  </div>
+                )}
+                <div className="grid grid-cols-2 gap-2">
+                  <div className="rounded border border-stone-200 bg-stone-50 p-2">
+                    <p className="text-[11px] uppercase tracking-wide text-stone-400">Favourites</p>
+                    <p className="text-lg font-semibold text-stone-800">{favs.length}</p>
+                  </div>
+                  <div className="rounded border border-stone-200 bg-stone-50 p-2">
+                    <p className="text-[11px] uppercase tracking-wide text-stone-400">Avg rating</p>
+                    <p className="text-lg font-semibold text-stone-800">{avgRating == null ? '—' : avgRating.toFixed(1)}</p>
+                  </div>
+                </div>
+              </div>
+            ) : (
+              <div className="space-y-2 text-xs text-stone-500">
+                <p>
+                  {isOwnProfile
+                    ? 'Make this space yours with favourite genres, top books, and what you are reading now.'
+                    : 'This reader is still shaping their profile.'}
+                </p>
+                {isOwnProfile && (
+                  <div className="flex flex-wrap gap-2">
+                    <Link href="/settings/profile" className="rounded-full border border-stone-300 px-3 py-1 font-medium text-stone-600 hover:border-brand hover:text-brand">Edit profile</Link>
+                    <Link href="/search" className="rounded-full bg-brand px-3 py-1 font-medium text-white hover:bg-brand-dark">Add books</Link>
+                  </div>
+                )}
+              </div>
+            )}
+          </div>
+
           <div className="rounded-lg border border-stone-200 bg-white p-3">
             <div className="mb-2 flex items-center justify-between">
               <h3 className="text-sm font-semibold text-stone-700">Shelf</h3>

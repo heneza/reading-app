@@ -4,6 +4,7 @@ import { searchBooks, searchAuthors, coverUrl } from '@/lib/openlibrary';
 import { addToShelf } from '@/app/actions/shelf';
 import { createClient } from '@/utils/supabase/server';
 import PostCard from '@/components/PostCard';
+import PendingButton from '@/components/PendingButton';
 
 type Filter = 'books' | 'authors' | 'users' | 'posts';
 
@@ -45,7 +46,7 @@ export default async function SearchResults({ q, filter }: { q: string; filter: 
                     <option value="read">Read</option>
                     <option value="dnf">DNF</option>
                   </select>
-                  <button className="rounded bg-brand px-3 py-1 text-sm font-medium text-white hover:opacity-90">Add</button>
+                  <PendingButton pendingLabel="Adding..." className="rounded bg-brand px-3 py-1 text-sm font-medium text-white hover:opacity-90">Add</PendingButton>
                 </form>
               ) : (
                 <span className="text-xs text-slate-400">Log in to add</span>

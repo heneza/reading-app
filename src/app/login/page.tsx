@@ -1,5 +1,6 @@
 import Link from 'next/link';
 import { login, signup, signInWithGoogle } from './actions';
+import PendingButton from '@/components/PendingButton';
 
 const inputCls = 'w-full rounded border border-slate-300 px-3 py-2';
 
@@ -24,14 +25,14 @@ export default function LoginPage({
         <p className="mb-4 rounded bg-green-50 p-3 text-sm text-green-700">{searchParams.message}</p>
       )}
 
-      <form>
-        <button
-          formAction={signInWithGoogle}
+      <form action={signInWithGoogle}>
+        <PendingButton
+          pendingLabel="Opening Google..."
           className="flex w-full items-center justify-center gap-2 rounded border border-slate-300 py-2 font-medium text-slate-700 transition hover:bg-slate-50"
         >
           <svg width="18" height="18" viewBox="0 0 48 48" aria-hidden="true"><path fill="#FFC107" d="M43.6 20.5H42V20H24v8h11.3c-1.6 4.7-6.1 8-11.3 8-6.6 0-12-5.4-12-12s5.4-12 12-12c3.1 0 5.9 1.2 8 3.1l5.7-5.7C34 6.5 29.3 4.5 24 4.5 13.2 4.5 4.5 13.2 4.5 24S13.2 43.5 24 43.5 43.5 34.8 43.5 24c0-1.2-.1-2.3-.3-3.5z"/><path fill="#FF3D00" d="M6.3 14.7l6.6 4.8C14.7 16 19 13 24 13c3.1 0 5.9 1.2 8 3.1l5.7-5.7C34 6.5 29.3 4.5 24 4.5 16.3 4.5 9.7 8.8 6.3 14.7z"/><path fill="#4CAF50" d="M24 43.5c5.2 0 9.9-2 13.4-5.2l-6.2-5.2c-2 1.5-4.6 2.4-7.2 2.4-5.2 0-9.6-3.3-11.2-8l-6.5 5C9.6 39.1 16.2 43.5 24 43.5z"/><path fill="#1976D2" d="M43.6 20.5H42V20H24v8h11.3c-.8 2.2-2.2 4.1-4.1 5.4l6.2 5.2C39.9 36.4 43.5 30.8 43.5 24c0-1.2-.1-2.3-.3-3.5z"/></svg>
           Continue with Google
-        </button>
+        </PendingButton>
       </form>
 
       <div className="my-4 flex items-center gap-3 text-xs text-slate-400">
@@ -41,7 +42,7 @@ export default function LoginPage({
       </div>
 
       {isSignup ? (
-        <form className="space-y-3">
+        <form action={signup} className="space-y-3">
           <div>
             <div className="relative">
               <span className="pointer-events-none absolute left-3 top-1/2 -translate-y-1/2 text-slate-400">@</span>
@@ -65,21 +66,21 @@ export default function LoginPage({
               <option value="prefer-not-to-say">Prefer not to say</option>
             </select>
           </label>
-          <button formAction={signup} className="w-full rounded bg-brand py-2 font-medium text-white hover:opacity-90">
+          <PendingButton pendingLabel="Creating account..." className="w-full rounded bg-brand py-2 font-medium text-white hover:opacity-90">
             Create account
-          </button>
+          </PendingButton>
           <p className="pt-1 text-center text-sm text-slate-500">
             Already have an account?{' '}
             <Link href="/login" className="font-medium text-brand hover:underline">Log in</Link>
           </p>
         </form>
       ) : (
-        <form className="space-y-3">
+        <form action={login} className="space-y-3">
           <input name="identifier" type="text" required autoCapitalize="none" autoCorrect="off" placeholder="Email or username" className={inputCls} />
           <input name="password" type="password" required placeholder="Password" className={inputCls} />
-          <button formAction={login} className="w-full rounded bg-brand py-2 font-medium text-white hover:opacity-90">
+          <PendingButton pendingLabel="Logging in..." className="w-full rounded bg-brand py-2 font-medium text-white hover:opacity-90">
             Log in
-          </button>
+          </PendingButton>
           <p className="pt-1 text-center text-sm text-slate-500">
             New here?{' '}
             <Link href="/login?mode=signup" className="font-medium text-brand hover:underline">Create an account</Link>

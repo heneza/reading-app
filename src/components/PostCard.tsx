@@ -3,6 +3,7 @@ import Link from 'next/link';
 import Avatar from '@/components/Avatar';
 import { timeAgo } from '@/lib/time';
 import PostEditToggle from '@/components/PostEditToggle';
+import PendingButton from '@/components/PendingButton';
 import { createClient } from '@/utils/supabase/server';
 import {
   deletePost,
@@ -84,7 +85,7 @@ export default async function PostCard({
         {canDelete && (
           <form action={deletePost}>
             <input type="hidden" name="id" value={post.id} />
-            <button title="Delete post" className="flex-shrink-0 text-stone-300 hover:text-red-600">×</button>
+            <PendingButton title="Delete post" pendingLabel="..." className="flex-shrink-0 text-stone-300 hover:text-red-600">×</PendingButton>
           </form>
         )}
       </div>
@@ -106,16 +107,16 @@ export default async function PostCard({
         <form action={reactToPost}>
           <input type="hidden" name="postId" value={post.id} />
           <input type="hidden" name="type" value="like" />
-          <button className={pill(myReaction === 'like')}>Like {likes}</button>
+          <PendingButton pendingLabel="Saving..." className={pill(myReaction === 'like')}>Like {likes}</PendingButton>
         </form>
         <form action={reactToPost}>
           <input type="hidden" name="postId" value={post.id} />
           <input type="hidden" name="type" value="dislike" />
-          <button className={pill(myReaction === 'dislike')}>Dislike {dislikes}</button>
+          <PendingButton pendingLabel="Saving..." className={pill(myReaction === 'dislike')}>Dislike {dislikes}</PendingButton>
         </form>
         <form action={repost} className="ml-auto">
           <input type="hidden" name="postId" value={post.id} />
-          <button className={pill(iReposted)} title="Repost to your profile">↻ {reposters.length}</button>
+          <PendingButton pendingLabel="..." className={pill(iReposted)} title="Repost to your profile">↻ {reposters.length}</PendingButton>
         </form>
       </div>
 
@@ -138,7 +139,7 @@ export default async function PostCard({
                 {mineC && (
                   <form action={deletePostComment}>
                     <input type="hidden" name="commentId" value={c.id} />
-                    <button className="text-stone-300 hover:text-red-600">×</button>
+                    <PendingButton pendingLabel="..." className="text-stone-300 hover:text-red-600">×</PendingButton>
                   </form>
                 )}
               </div>
@@ -148,7 +149,7 @@ export default async function PostCard({
             <form action={addPostComment} className="flex gap-2">
               <input type="hidden" name="postId" value={post.id} />
               <input name="body" placeholder="Write a comment…" className="flex-1 rounded border border-stone-300 px-3 py-1 text-sm" />
-              <button className="rounded bg-slate-700 px-3 py-1 text-sm text-white hover:opacity-90">Reply</button>
+              <PendingButton pendingLabel="Replying..." className="rounded bg-slate-700 px-3 py-1 text-sm text-white hover:opacity-90">Reply</PendingButton>
             </form>
           )}
         </div>
