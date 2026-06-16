@@ -99,6 +99,10 @@ export default function RealtimeNotifications({
           if (!uname) return;
           // Don't toast if I'm already looking at that conversation.
           if (typeof window !== 'undefined' && window.location.pathname === `/messages/${uname}`) return;
+          if (typeof window !== 'undefined') {
+            const activeInbox = (window as any).__readingAppActiveInbox;
+            if (activeInbox?.id === senderId || activeInbox?.username === uname) return;
+          }
           push(`New message from @${uname}`, `/messages/${uname}`);
         }
       );

@@ -69,6 +69,23 @@ export default function Thread({
             : [...prev, { id: m.id, sender_id: m.sender_id, body: m.body, created_at: m.created_at, edited_at: m.edited_at ?? null, read_at: m.read_at ?? null }]
         );
         setTyping(false);
+        void supabase
+          .from('messages')
+          .update({ read_at: new Date().toISOString() })
+          .eq('id', m.id)
+          .eq('recipient_id', meId)
+          .is('read_at', null);
+      }
+    );
+    ch.on(
+      'postgres_changes',
+      { event: 'UPDATE', schema: 'public', table: 'messages', filter: `sender_id=eq.${meId}` },
+      (payload: any) => {
+        const m = payload.new;
+        if (!m || m.recipient_id !== otherId) return;
+        setMsgs((prev) =>
+          prev.map((item) => (item.id === m.id ? { ...item, read_at: m.read_at ?? null } : item))
+        );
       }
     );
     ch.on('broadcast', { event: 'typing' }, () => {

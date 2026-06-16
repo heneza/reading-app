@@ -228,7 +228,7 @@ function DiscoveryRail({
 }) {
   return (
     <aside className="space-y-3 lg:sticky lg:top-24">
-      {showTitle && <h1 className="pb-12 text-2xl font-bold">Explore</h1>}
+      {showTitle && <h1 className="text-2xl font-bold leading-7">Explore</h1>}
 
       <Link
         href={article ? `/articles#article-${article.id}` : '/articles'}

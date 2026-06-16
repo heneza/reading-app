@@ -3,7 +3,10 @@ import { Source_Serif_4 } from 'next/font/google';
 import './globals.css';
 import Nav from '@/components/Nav';
 import Assistant from '@/components/Assistant';
+import InboxWidget from '@/components/InboxWidget';
 import RealtimeNotifications from '@/components/RealtimeNotifications';
+import { loadMessageSidebarItems } from '@/lib/message-sidebar';
+import type { MessageSidebarItem } from '@/lib/message-sidebar';
 import { createClient } from '@/utils/supabase/server';
 
 // The warm, readable serif Claude's replies are set in (free stand-in for
@@ -46,14 +49,19 @@ export default async function RootLayout({
     ai_enabled: boolean | null;
   } | null = null;
   let aiEnabled = true;
+  let inboxItems: MessageSidebarItem[] = [];
   if (user) {
-    const { data: meProf } = await supabase
-      .from('profiles')
-      .select('username, avatar_url, display_name, ai_enabled')
-      .eq('id', user.id)
-      .maybeSingle();
+    const [{ data: meProf }, loadedInboxItems] = await Promise.all([
+      supabase
+        .from('profiles')
+        .select('username, avatar_url, display_name, ai_enabled')
+        .eq('id', user.id)
+        .maybeSingle(),
+      loadMessageSidebarItems(supabase, user.id),
+    ]);
     viewerProfile = meProf ?? null;
     aiEnabled = meProf?.ai_enabled !== false;
+    inboxItems = loadedInboxItems;
   }
   return (
     <html lang="en" className={bodyFont.variable} suppressHydrationWarning>
@@ -63,6 +71,7 @@ export default async function RootLayout({
       <body className="font-sans">
         <Nav viewerId={user?.id ?? null} profile={viewerProfile} />
         <main className="mx-auto max-w-[880px] px-5 py-8">{children}</main>
+        {user && <InboxWidget meId={user.id} initialItems={inboxItems} />}
         {user && aiEnabled && <Assistant />}
         {user && <RealtimeNotifications meId={user.id} username={viewerProfile?.username ?? null} />}
       </body>
