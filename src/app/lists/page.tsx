@@ -6,6 +6,8 @@ import { createList, seedGenreLists } from '@/app/actions/lists';
 
 export const dynamic = 'force-dynamic';
 
+const MIN_VISIBLE_GENRE_LIST_BOOKS = 6;
+
 export default async function ListsPage({ searchParams }: { searchParams: { error?: string } }) {
   const supabase = createClient();
   const { data: { user } } = await supabase.auth.getUser();
@@ -44,7 +46,10 @@ export default async function ListsPage({ searchParams }: { searchParams: { erro
     (likes ?? []).forEach((l: any) => likeByList.set(l.list_id, (likeByList.get(l.list_id) ?? 0) + 1));
   }
 
-  const genreLists = lists.filter((l: any) => l.is_system);
+  const allGenreLists = lists.filter((l: any) => l.is_system);
+  const genreLists = allGenreLists.filter(
+    (l: any) => (countByList.get(l.id) ?? 0) >= MIN_VISIBLE_GENRE_LIST_BOOKS
+  );
   const communityLists = lists.filter((l: any) => !l.is_system);
 
   const ownerName = new Map<string, string>();
@@ -107,7 +112,7 @@ export default async function ListsPage({ searchParams }: { searchParams: { erro
         <h2 className="mb-3 text-lg font-semibold">By genre</h2>
         {genreLists.length === 0 ? (
           <p className="rounded-lg border border-stone-200 bg-white p-4 text-sm text-stone-500">
-            Genre lists haven’t been generated yet{isAdmin ? ' — use the panel below to seed them.' : '.'}
+            Genre lists are still filling up{isAdmin ? ' — use the panel below to seed or refresh them.' : '.'}
           </p>
         ) : (
           <div className="grid grid-cols-2 gap-4 sm:grid-cols-3 md:grid-cols-4">
