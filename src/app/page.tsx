@@ -33,6 +33,36 @@ type ArticlePreview = {
   tag: string | null;
 };
 
+type Activity = {
+  at: string;
+  userId: string;
+  kind: 'shelf' | 'review';
+  status?: string;
+  rating?: number | null;
+  body?: string;
+  bookId: string;
+  book: any;
+};
+
+type ShelfEntry = {
+  book_id: string;
+  status: string | null;
+  rating: number | null;
+  updated_at: string | null;
+  books?: {
+    title?: string | null;
+    author?: string | null;
+    cover_id?: number | null;
+  } | null;
+};
+
+type ShelfCounts = {
+  reading: number;
+  want_to_read: number;
+  read: number;
+  dnf: number;
+};
+
 function trimText(text: string, max = 120) {
   const clean = text.trim();
   return clean.length > max ? `${clean.slice(0, max).trim()}...` : clean;
@@ -73,6 +103,136 @@ function DiscoveryRail({ article }: { article: ArticlePreview | null }) {
         </p>
         <p className="mt-3 text-xs text-brand">Open quotes</p>
       </Link>
+    </aside>
+  );
+}
+
+function ExploreRightRail({
+  username,
+  shelfCounts,
+  shelfTotal,
+  ratedCount,
+  averageRating,
+  currentRead,
+  popularTags,
+  activity,
+  nameById,
+  avatarById,
+}: {
+  username: string | null | undefined;
+  shelfCounts: ShelfCounts;
+  shelfTotal: number;
+  ratedCount: number;
+  averageRating: number | null;
+  currentRead: ShelfEntry | null;
+  popularTags: { tag: string; count: number }[];
+  activity: Activity[];
+  nameById: Map<string, string>;
+  avatarById: Map<string, string | null>;
+}) {
+  const shelfHref = username ? `/u/${username}?tab=shelf#profile-shelf` : '/settings/import';
+  const shelfRows = [
+    ['Reading', shelfCounts.reading],
+    ['Want', shelfCounts.want_to_read],
+    ['Read', shelfCounts.read],
+    ['DNF', shelfCounts.dnf],
+  ] as const;
+
+  return (
+    <aside className="hidden space-y-3 xl:block xl:sticky xl:top-24">
+      <section className="rounded-lg border border-stone-200 bg-white p-4">
+        <div className="flex items-center justify-between gap-3">
+          <p className="text-xs font-semibold uppercase tracking-wide text-stone-400">Your shelf</p>
+          <Link href={shelfHref} className="text-xs font-medium text-brand hover:underline">
+            Open
+          </Link>
+        </div>
+        <div className="mt-3 grid grid-cols-2 gap-2">
+          {shelfRows.map(([label, count]) => (
+            <div key={label} className="rounded border border-stone-200 px-3 py-2">
+              <p className="text-lg font-semibold leading-none text-stone-800">{count}</p>
+              <p className="mt-1 text-[11px] text-stone-500">{label}</p>
+            </div>
+          ))}
+        </div>
+        <p className="mt-3 text-xs text-stone-500">
+          {averageRating == null
+            ? `${shelfTotal} books shelved`
+            : `${averageRating.toFixed(1)}★ avg from ${ratedCount} ratings`}
+        </p>
+      </section>
+
+      <section className="rounded-lg border border-stone-200 bg-white p-4">
+        <p className="text-xs font-semibold uppercase tracking-wide text-stone-400">Continue</p>
+        {currentRead ? (
+          <Link href={`/book/${currentRead.book_id}`} className="mt-3 flex gap-3 hover:text-brand">
+            <div className="book-cover-fallback h-20 w-14 flex-shrink-0 overflow-hidden rounded">
+              {coverUrl(currentRead.books?.cover_id, 'S') && (
+                <Image
+                  src={coverUrl(currentRead.books?.cover_id, 'S') as string}
+                  alt=""
+                  width={56}
+                  height={84}
+                  className="relative z-10 h-full w-full object-cover"
+                />
+              )}
+            </div>
+            <div className="min-w-0">
+              <p className="line-clamp-3 text-sm font-semibold text-stone-800">{currentRead.books?.title ?? 'Current read'}</p>
+              <p className="mt-1 line-clamp-2 text-xs text-stone-500">{currentRead.books?.author}</p>
+            </div>
+          </Link>
+        ) : (
+          <p className="mt-2 text-sm text-stone-500">No current read yet.</p>
+        )}
+      </section>
+
+      <section className="rounded-lg border border-stone-200 bg-white p-4">
+        <p className="text-xs font-semibold uppercase tracking-wide text-stone-400">Friends activity</p>
+        {activity.length === 0 ? (
+          <p className="mt-2 text-sm text-stone-500">Follow readers to fill this.</p>
+        ) : (
+          <ul className="mt-3 space-y-3">
+            {activity.slice(0, 4).map((item, index) => {
+              const uname = nameById.get(item.userId) ?? 'reader';
+              return (
+                <li key={`${item.userId}-${item.bookId}-${index}`} className="flex gap-2">
+                  <Avatar src={avatarById.get(item.userId) ?? null} name={uname} size={28} />
+                  <p className="min-w-0 flex-1 text-xs leading-5 text-stone-600">
+                    <Link href={`/u/${uname}`} className="font-medium text-stone-800 hover:text-brand hover:underline">
+                      @{uname}
+                    </Link>{' '}
+                    {item.kind === 'review' ? 'reviewed' : VERB[item.status ?? ''] ?? 'shelved'}{' '}
+                    <Link href={`/book/${item.bookId}`} className="font-medium text-stone-800 hover:text-brand hover:underline">
+                      {item.book?.title ?? 'a book'}
+                    </Link>
+                    <span className="text-stone-400"> · {timeAgo(item.at)}</span>
+                  </p>
+                </li>
+              );
+            })}
+          </ul>
+        )}
+      </section>
+
+      <section className="rounded-lg border border-stone-200 bg-white p-4">
+        <p className="text-xs font-semibold uppercase tracking-wide text-stone-400">Popular tags</p>
+        {popularTags.length === 0 ? (
+          <p className="mt-2 text-sm text-stone-500">Tags will appear as posts grow.</p>
+        ) : (
+          <div className="mt-3 flex flex-wrap gap-2">
+            {popularTags.map(({ tag }) => (
+              <Link
+                key={tag}
+                href={`/search?filter=posts&q=${encodeURIComponent(`#${tag}`)}`}
+                className="rounded-full border border-stone-200 px-2.5 py-1 text-xs text-stone-600 transition hover:border-brand hover:text-brand"
+              >
+                #{tag}
+              </Link>
+            ))}
+          </div>
+        )}
+      </section>
     </aside>
   );
 }
@@ -270,16 +430,6 @@ export default async function ExplorePage() {
   const followingIds = (followingRowsRes.data ?? []).map((r: any) => r.followee_id);
 
   // Activity from people I follow: recent shelf changes + reviews, merged.
-  type Activity = {
-    at: string;
-    userId: string;
-    kind: 'shelf' | 'review';
-    status?: string;
-    rating?: number | null;
-    body?: string;
-    bookId: string;
-    book: any;
-  };
   let activity: Activity[] = [];
   const nameById = new Map<string, string>();
   const avatarById = new Map<string, string | null>();
@@ -343,11 +493,24 @@ export default async function ExplorePage() {
       .eq('user_id', user.id),
     supabase
       .from('reading_entries')
-      .select('book_id')
-      .eq('user_id', user.id),
+      .select('book_id, status, rating, updated_at, books ( title, author, cover_id )')
+      .eq('user_id', user.id)
+      .order('updated_at', { ascending: false }),
   ]);
   const mySlugs = (myGenreRows ?? []).map((r: any) => r.genre);
-  const shelved = new Set((myEntries ?? []).map((r: any) => r.book_id));
+  const shelfEntries = ((myEntries ?? []) as any[]) as ShelfEntry[];
+  const shelved = new Set(shelfEntries.map((r) => r.book_id));
+  const shelfCounts: ShelfCounts = { reading: 0, want_to_read: 0, read: 0, dnf: 0 };
+  for (const entry of shelfEntries) {
+    if (entry.status === 'reading' || entry.status === 'want_to_read' || entry.status === 'read' || entry.status === 'dnf') {
+      shelfCounts[entry.status] += 1;
+    }
+  }
+  const ratedEntries = shelfEntries.filter((entry) => entry.rating != null);
+  const averageRating = ratedEntries.length
+    ? ratedEntries.reduce((sum, entry) => sum + Number(entry.rating), 0) / ratedEntries.length
+    : null;
+  const currentRead = shelfEntries.find((entry) => entry.status === 'reading') ?? null;
 
   let forYou: CoverItem[] = [];
   if (mySlugs.length) {
@@ -382,6 +545,17 @@ export default async function ExplorePage() {
     .order('created_at', { ascending: false })
     .limit(15);
   const shortPosts = shortPostsData ?? [];
+  const tagTally = new Map<string, number>();
+  for (const post of shortPosts as any[]) {
+    for (const tag of post.tags ?? []) {
+      tagTally.set(tag, (tagTally.get(tag) ?? 0) + 1);
+    }
+  }
+  if (articlePreview?.tag) tagTally.set(articlePreview.tag, (tagTally.get(articlePreview.tag) ?? 0) + 1);
+  const popularTags = Array.from(tagTally.entries())
+    .sort((a, b) => b[1] - a[1] || a[0].localeCompare(b[0]))
+    .slice(0, 8)
+    .map(([tag, count]) => ({ tag, count }));
   const postAuthors = new Map<string, any>();
   const authorIds = Array.from(new Set(shortPosts.map((p: any) => p.user_id)));
   const [authorsRes, shortPostInteractions] = await Promise.all([
@@ -396,17 +570,12 @@ export default async function ExplorePage() {
   (authorsRes.data ?? []).forEach((a: any) => postAuthors.set(a.id, a));
 
   return (
-    <div className="space-y-10">
-      <header className="flex items-end justify-between">
+    <div className="relative left-1/2 w-[min(100vw-2rem,1360px)] -translate-x-1/2 space-y-10">
+      <header>
         <h1 className="text-2xl font-bold">Explore</h1>
-        {me?.username && (
-          <Link href={`/u/${me.username}`} className="text-sm text-brand hover:underline">
-            Your shelf →
-          </Link>
-        )}
       </header>
 
-      <div className="grid gap-8 lg:grid-cols-[15rem_minmax(0,1fr)] lg:items-start">
+      <div className="grid gap-8 lg:grid-cols-[15rem_minmax(0,1fr)] lg:items-start xl:grid-cols-[15rem_minmax(0,1fr)_17rem]">
         <DiscoveryRail article={articlePreview} />
 
         <div className="min-w-0 space-y-10">
@@ -553,6 +722,18 @@ export default async function ExplorePage() {
       </section>
 
         </div>
+        <ExploreRightRail
+          username={me?.username}
+          shelfCounts={shelfCounts}
+          shelfTotal={shelfEntries.length}
+          ratedCount={ratedEntries.length}
+          averageRating={averageRating}
+          currentRead={currentRead}
+          popularTags={popularTags}
+          activity={activity}
+          nameById={nameById}
+          avatarById={avatarById}
+        />
       </div>
 
     </div>
