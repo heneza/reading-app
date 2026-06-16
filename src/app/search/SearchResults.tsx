@@ -1,11 +1,11 @@
 import Link from 'next/link';
-import Image from 'next/image';
 import { searchBooks, searchAuthors, coverUrl } from '@/lib/openlibrary';
 import { addToShelf } from '@/app/actions/shelf';
 import { createClient } from '@/utils/supabase/server';
 import PostCard from '@/components/PostCard';
 import PendingButton from '@/components/PendingButton';
 import { loadPostCardInteractions } from '@/lib/post-interactions';
+import BookCoverImage from '@/components/BookCoverImage';
 
 type Filter = 'books' | 'authors' | 'users' | 'posts';
 
@@ -35,8 +35,8 @@ export default async function SearchResults({ q, filter }: { q: string; filter: 
           return (
             <li key={b.key} className="flex items-center gap-4 rounded border border-slate-200 bg-white p-3">
               <Link href={detailHref} className="flex min-w-0 flex-1 items-center gap-4 rounded transition hover:text-brand">
-                <div className="h-[72px] w-[48px] flex-shrink-0 overflow-hidden rounded bg-slate-100">
-                  {src && <Image src={src} alt={b.title} width={48} height={72} className="h-full w-full object-cover" />}
+                <div className="book-cover-fallback h-[72px] w-[48px] flex-shrink-0 overflow-hidden rounded">
+                  <BookCoverImage src={src} alt={b.title} width={48} height={72} className="relative z-10 h-full w-full object-cover" />
                 </div>
                 <div className="min-w-0 flex-1">
                   <p className="truncate font-medium">{b.title}</p>

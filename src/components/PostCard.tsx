@@ -13,6 +13,7 @@ import {
   addPostComment,
   deletePostComment,
 } from '@/app/actions/posts';
+import { reportContent } from '@/app/actions/reports';
 
 export default async function PostCard({
   post,
@@ -135,6 +136,26 @@ export default async function PostCard({
             </Link>
           ))}
         </div>
+      )}
+
+      {resolvedViewerId && post.user_id !== resolvedViewerId && (
+        <details className="mt-2">
+          <summary className="cursor-pointer text-xs text-stone-400 hover:text-brand">Report</summary>
+          <form action={reportContent} className="mt-2 flex flex-wrap gap-2">
+            <input type="hidden" name="targetType" value="post" />
+            <input type="hidden" name="targetId" value={post.id} />
+            <input type="hidden" name="next" value={post.is_article ? '/articles' : '/'} />
+            <select name="reason" className="rounded border border-stone-300 px-2 py-1 text-xs">
+              <option value="spam">Spam</option>
+              <option value="harassment">Harassment</option>
+              <option value="hate">Hate</option>
+              <option value="spoiler">Spoiler</option>
+              <option value="other">Other</option>
+            </select>
+            <input name="details" maxLength={600} placeholder="Optional note" className="min-w-0 flex-1 rounded border border-stone-300 px-2 py-1 text-xs" />
+            <PendingButton pendingLabel="Sending..." className="rounded bg-stone-700 px-2 py-1 text-xs text-white">Send</PendingButton>
+          </form>
+        </details>
       )}
 
       {/* interaction bar */}

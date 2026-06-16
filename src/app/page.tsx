@@ -1,10 +1,10 @@
 import Link from 'next/link';
-import Image from 'next/image';
 import { createClient } from '@/utils/supabase/server';
 import { coverUrl } from '@/lib/openlibrary';
 import Avatar from '@/components/Avatar';
 import PostCard from '@/components/PostCard';
 import BookMarquee from '@/components/BookMarquee';
+import BookCoverImage from '@/components/BookCoverImage';
 import { timeAgo } from '@/lib/time';
 import { loadPostCardInteractions } from '@/lib/post-interactions';
 import { htmlToText } from '@/lib/sanitize';
@@ -29,6 +29,14 @@ type ArticlePreview = {
   tag: string | null;
 };
 
+type ClubPreview = {
+  id: string;
+  name: string;
+  topic: string;
+  description: string | null;
+  visibility: string;
+};
+
 type Activity = {
   id: string;
   at: string;
@@ -51,13 +59,6 @@ type ShelfEntry = {
     author?: string | null;
     cover_id?: number | null;
   } | null;
-};
-
-type ShelfCounts = {
-  reading: number;
-  want_to_read: number;
-  read: number;
-  dnf: number;
 };
 
 function trimText(text: string, max = 120) {
@@ -217,19 +218,96 @@ function PopularTagsCard({ tags }: { tags: { tag: string; count: number }[] }) {
   );
 }
 
-function DiscoveryRail({
-  article,
-  popularTags = [],
+function CommunityRail({
+  clubs,
+  activity,
+  nameById,
+  avatarById,
   showTitle = false,
 }: {
-  article: ArticlePreview | null;
-  popularTags?: { tag: string; count: number }[];
+  clubs: ClubPreview[];
+  activity: Activity[];
+  nameById: Map<string, string>;
+  avatarById: Map<string, string | null>;
   showTitle?: boolean;
 }) {
   return (
     <aside className="space-y-3 lg:sticky lg:top-24">
       {showTitle && <h1 className="text-2xl font-bold leading-7">Explore</h1>}
 
+      <section className="rounded-lg border border-stone-200 bg-white p-4">
+        <div className="flex items-center justify-between gap-3">
+          <Link href="/clubs" className="text-xs font-semibold uppercase tracking-wide text-stone-400 hover:text-brand">
+            Clubs
+          </Link>
+          <Link href="/clubs" className="text-xs font-medium text-brand hover:underline">
+            View
+          </Link>
+        </div>
+        {clubs.length === 0 ? (
+          <p className="mt-2 text-sm text-stone-500">Start or join a reading room.</p>
+        ) : (
+          <ul className="mt-3 space-y-3">
+            {clubs.slice(0, 3).map((club) => (
+              <li key={club.id}>
+                <Link href={`/clubs/${club.id}`} className="block hover:text-brand">
+                  <span className="block truncate text-sm font-semibold text-stone-800">{club.name}</span>
+                  <span className="block truncate text-xs text-stone-500">{club.topic}</span>
+                </Link>
+              </li>
+            ))}
+          </ul>
+        )}
+      </section>
+
+      <section className="rounded-lg border border-stone-200 bg-white p-4">
+        <div className="flex items-center justify-between gap-3">
+          <Link href="/?view=friends" className="text-xs font-semibold uppercase tracking-wide text-stone-400 hover:text-brand">
+            Friends activity
+          </Link>
+          <Link href="/?view=friends" className="text-xs font-medium text-brand hover:underline">
+            View
+          </Link>
+        </div>
+        {activity.length === 0 ? (
+          <p className="mt-2 text-sm text-stone-500">Follow readers to fill this.</p>
+        ) : (
+          <ul className="mt-3 space-y-3">
+            {activity.slice(0, 5).map((item) => {
+              const uname = nameById.get(item.userId) ?? 'reader';
+              const targetName = item.targetUserId ? nameById.get(item.targetUserId) : null;
+              return (
+                <li key={item.id} className="flex gap-2">
+                  <Avatar src={avatarById.get(item.userId) ?? null} name={uname} size={26} />
+                  <p className="min-w-0 flex-1 text-xs leading-5 text-stone-600">
+                    <Link href={`/u/${uname}`} className="font-medium text-stone-800 hover:text-brand hover:underline">
+                      @{uname}
+                    </Link>{' '}
+                    {activityVerb(item.kind)}
+                    {targetName ? ` @${targetName}'s` : ''}{' '}
+                    <Link href={activityHref(item, uname)} className="font-medium text-stone-800 hover:text-brand hover:underline">
+                      {item.title}
+                    </Link>
+                  </p>
+                </li>
+              );
+            })}
+          </ul>
+        )}
+      </section>
+    </aside>
+  );
+}
+
+function DiscoveryRail({
+  article,
+  popularTags = [],
+}: {
+  article: ArticlePreview | null;
+  popularTags?: { tag: string; count: number }[];
+}) {
+  return (
+    <aside className="space-y-3 lg:sticky lg:top-24">
       <Link
         href={article ? `/articles#article-${article.id}` : '/articles'}
         className="block rounded-lg border border-stone-200 bg-white p-4 transition hover:border-brand"
@@ -263,105 +341,6 @@ function DiscoveryRail({
   );
 }
 
-function ExploreRightRail({
-  username,
-  shelfCounts,
-  shelfTotal,
-  ratedCount,
-  averageRating,
-  activity,
-  nameById,
-  avatarById,
-}: {
-  username: string | null | undefined;
-  shelfCounts: ShelfCounts;
-  shelfTotal: number;
-  ratedCount: number;
-  averageRating: number | null;
-  activity: Activity[];
-  nameById: Map<string, string>;
-  avatarById: Map<string, string | null>;
-}) {
-  const shelfHref = username ? `/u/${username}?tab=shelf#profile-shelf` : '/settings/import';
-  const shelfRows = [
-    ['Reading', shelfCounts.reading],
-    ['Want', shelfCounts.want_to_read],
-    ['Read', shelfCounts.read],
-    ['DNF', shelfCounts.dnf],
-  ] as const;
-
-  return (
-    <aside className="hidden space-y-3 xl:block xl:sticky xl:top-24">
-      <section className="rounded-lg border border-stone-200 bg-white p-4">
-        <div className="flex items-center justify-between gap-3">
-          <p className="text-xs font-semibold uppercase tracking-wide text-stone-400">Your shelf</p>
-          <Link href={shelfHref} className="text-xs font-medium text-brand hover:underline">
-            Open
-          </Link>
-        </div>
-        <div className="mt-3 grid grid-cols-2 gap-2">
-          {shelfRows.map(([label, count]) => (
-            <div key={label} className="rounded border border-stone-200 px-3 py-2">
-              <p className="text-lg font-semibold leading-none text-stone-800">{count}</p>
-              <p className="mt-1 text-[11px] text-stone-500">{label}</p>
-            </div>
-          ))}
-        </div>
-        <p className="mt-3 text-xs text-stone-500">
-          {averageRating == null
-            ? `${shelfTotal} books shelved`
-            : `${averageRating.toFixed(1)}★ avg from ${ratedCount} ratings`}
-        </p>
-      </section>
-
-      <section className="rounded-lg border border-stone-200 bg-white p-4">
-        <div className="flex items-center justify-between gap-3">
-          <Link href="/?view=friends" className="text-xs font-semibold uppercase tracking-wide text-stone-400 hover:text-brand">
-            Friends activity
-          </Link>
-          <Link href="/?view=friends" className="text-xs font-medium text-brand hover:underline">
-            View
-          </Link>
-        </div>
-        {activity.length === 0 ? (
-          <p className="mt-2 text-sm text-stone-500">Follow readers to fill this.</p>
-        ) : (
-          <ul className="mt-3 space-y-3">
-            {activity.slice(0, 7).map((item) => {
-              const uname = nameById.get(item.userId) ?? 'reader';
-              const targetName = item.targetUserId ? nameById.get(item.targetUserId) : null;
-              return (
-                <li key={item.id} className="flex gap-2">
-                  <Avatar src={avatarById.get(item.userId) ?? null} name={uname} size={28} />
-                  <p className="min-w-0 flex-1 text-xs leading-5 text-stone-600">
-                    <Link href={`/u/${uname}`} className="font-medium text-stone-800 hover:text-brand hover:underline">
-                      @{uname}
-                    </Link>{' '}
-                    {activityVerb(item.kind)}
-                    {targetName ? (
-                      <>
-                        {' '}
-                        <Link href={`/u/${targetName}`} className="font-medium text-stone-800 hover:text-brand hover:underline">
-                          @{targetName}
-                        </Link>
-                        &apos;s
-                      </>
-                    ) : null}{' '}
-                    <Link href={activityHref(item, uname)} className="font-medium text-stone-800 hover:text-brand hover:underline">
-                      {item.title}
-                    </Link>
-                    <span className="text-stone-400"> · {timeAgo(item.at)}</span>
-                  </p>
-                </li>
-              );
-            })}
-          </ul>
-        )}
-      </section>
-    </aside>
-  );
-}
-
 function CoverGrid({ items }: { items: CoverItem[] }) {
   return (
     <ul className="grid grid-cols-3 gap-3 sm:grid-cols-4 md:grid-cols-6">
@@ -375,15 +354,13 @@ function CoverGrid({ items }: { items: CoverItem[] }) {
                 <span aria-hidden="true" className="absolute inset-2 z-0 flex items-center justify-center overflow-hidden text-center text-[10px] font-semibold uppercase leading-tight tracking-wide text-stone-600">
                   {fallback}
                 </span>
-                {src && (
-                  <Image
-                    src={src}
-                    alt={it.title ?? ''}
-                    width={200}
-                    height={300}
-                    className="relative z-10 h-full w-full object-cover"
-                  />
-                )}
+                <BookCoverImage
+                  src={src}
+                  alt={it.title ?? ''}
+                  width={200}
+                  height={300}
+                  className="relative z-10 h-full w-full object-cover"
+                />
               </div>
               <p className="mt-1 truncate text-xs font-medium">{it.title}</p>
               <p className="truncate text-[11px] text-stone-500">{it.author}</p>
@@ -553,15 +530,13 @@ export default async function ExplorePage({
 
   // --- Logged-in feed -------------------------------------------------
   // Independent — fetch the viewer's profile + who they follow together.
-  const [meRes, followingRowsRes, blockRowsRes] = await Promise.all([
-    supabase.from('profiles').select('username, display_name').eq('id', user.id).maybeSingle(),
+  const [followingRowsRes, blockRowsRes] = await Promise.all([
     supabase.from('follows').select('followee_id').eq('follower_id', user.id),
     supabase
       .from('blocks')
       .select('blocker_id, blocked_id')
       .or(`blocker_id.eq.${user.id},blocked_id.eq.${user.id}`),
   ]);
-  const me = meRes.data;
   const blockedIds = new Set<string>();
   (blockRowsRes.data ?? []).forEach((row: any) => {
     if (row.blocker_id === user.id) blockedIds.add(row.blocked_id);
@@ -718,16 +693,13 @@ export default async function ExplorePage({
   const mySlugs = (myGenreRows ?? []).map((r: any) => r.genre);
   const shelfEntries = ((myEntries ?? []) as any[]) as ShelfEntry[];
   const shelved = new Set(shelfEntries.map((r) => r.book_id));
-  const shelfCounts: ShelfCounts = { reading: 0, want_to_read: 0, read: 0, dnf: 0 };
-  for (const entry of shelfEntries) {
-    if (entry.status === 'reading' || entry.status === 'want_to_read' || entry.status === 'read' || entry.status === 'dnf') {
-      shelfCounts[entry.status] += 1;
-    }
-  }
-  const ratedEntries = shelfEntries.filter((entry) => entry.rating != null);
-  const averageRating = ratedEntries.length
-    ? ratedEntries.reduce((sum, entry) => sum + Number(entry.rating), 0) / ratedEntries.length
-    : null;
+
+  const { data: clubRows } = await supabase
+    .from('clubs')
+    .select('id, name, topic, description, visibility')
+    .order('created_at', { ascending: false })
+    .limit(5);
+  const clubPreviews = (clubRows ?? []) as ClubPreview[];
 
   let forYou: CoverItem[] = [];
   if (mySlugs.length) {
@@ -789,7 +761,13 @@ export default async function ExplorePage({
   return (
     <div className="relative left-1/2 w-[min(100vw-2rem,1360px)] -translate-x-1/2">
       <div className="grid gap-8 lg:grid-cols-[15rem_minmax(0,1fr)] lg:items-start xl:grid-cols-[15rem_minmax(0,1fr)_17rem]">
-        <DiscoveryRail article={articlePreview} popularTags={popularTags} showTitle />
+        <CommunityRail
+          clubs={clubPreviews}
+          activity={activity}
+          nameById={nameById}
+          avatarById={avatarById}
+          showTitle
+        />
 
         <div className="min-w-0 space-y-8">
           {friendsView ? (
@@ -873,16 +851,9 @@ export default async function ExplorePage({
           )}
 
         </div>
-        <ExploreRightRail
-          username={me?.username}
-          shelfCounts={shelfCounts}
-          shelfTotal={shelfEntries.length}
-          ratedCount={ratedEntries.length}
-          averageRating={averageRating}
-          activity={activity}
-          nameById={nameById}
-          avatarById={avatarById}
-        />
+        <div className="hidden xl:block">
+          <DiscoveryRail article={articlePreview} popularTags={popularTags} />
+        </div>
       </div>
 
     </div>

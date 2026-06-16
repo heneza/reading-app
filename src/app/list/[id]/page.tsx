@@ -1,9 +1,9 @@
 import Link from 'next/link';
-import Image from 'next/image';
 import { notFound } from 'next/navigation';
 import { createClient } from '@/utils/supabase/server';
 import { coverUrl } from '@/lib/openlibrary';
 import { likeList, unlikeList, deleteList, removeBookFromList } from '@/app/actions/lists';
+import BookCoverImage from '@/components/BookCoverImage';
 
 export const dynamic = 'force-dynamic';
 
@@ -77,8 +77,8 @@ export default async function ListDetail({ params }: { params: { id: string } })
             return (
               <li key={it.book_id} className="group relative">
                 <Link href={`/book/${it.book_id}`} className="flex flex-col">
-                  <div className="aspect-[2/3] w-full overflow-hidden rounded bg-stone-100 group-hover:opacity-90">
-                    {src && <Image src={src} alt={it.books?.title ?? ''} width={200} height={300} className="h-full w-full object-cover" />}
+                  <div className="book-cover-fallback aspect-[2/3] w-full overflow-hidden rounded group-hover:opacity-90">
+                    <BookCoverImage src={src} alt={it.books?.title ?? ''} width={200} height={300} className="relative z-10 h-full w-full object-cover" />
                   </div>
                   <p className="mt-1 truncate text-xs font-medium">{it.books?.title}</p>
                   <p className="truncate text-[11px] text-stone-500">{it.books?.author}</p>

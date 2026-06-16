@@ -97,6 +97,19 @@ export default async function SettingsPage({
       </section>
 
       {/* Appearance */}
+      {profile?.is_admin && (
+        <section>
+          <h2 className={sectionH}>Admin</h2>
+          <div className="rounded-lg border border-stone-200 bg-white p-4 text-sm text-stone-600">
+            <Link href="/settings/moderation" className="font-medium text-brand hover:underline">
+              Moderation queue →
+            </Link>
+            <p className="mt-1 text-stone-500">Review reported posts, club posts, profiles, and lists.</p>
+          </div>
+        </section>
+      )}
+
+      {/* Appearance */}
       <section>
         <h2 className={sectionH}>Appearance</h2>
         <div className="space-y-3 rounded-lg border border-stone-200 bg-white p-4 text-sm text-stone-600">

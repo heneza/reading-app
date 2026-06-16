@@ -1,9 +1,9 @@
-import Image from 'next/image';
 import Link from 'next/link';
 import { notFound } from 'next/navigation';
 import { createClient } from '@/utils/supabase/server';
 import { Suspense } from 'react';
 import { coverUrl } from '@/lib/openlibrary';
+import BookCoverImage from '@/components/BookCoverImage';
 import BookDescription from './BookDescription';
 import {
   reactToReview,
@@ -121,8 +121,8 @@ export default async function BookPage({ params }: { params: { id: string } }) {
     <div>
       {/* --- Book header --- */}
       <div className="flex gap-6">
-        <div className="h-[210px] w-[140px] flex-shrink-0 overflow-hidden rounded bg-slate-200">
-          {cover && <Image src={cover} alt={book.title} width={140} height={210} className="h-full w-full object-cover" />}
+        <div className="book-cover-fallback h-[210px] w-[140px] flex-shrink-0 overflow-hidden rounded">
+          <BookCoverImage src={cover} alt={book.title} width={140} height={210} className="relative z-10 h-full w-full object-cover" />
         </div>
         <div className="flex-1">
           <div className="mb-1 flex flex-wrap items-center gap-2">

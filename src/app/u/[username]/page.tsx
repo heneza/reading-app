@@ -1,5 +1,4 @@
 import Link from 'next/link';
-import Image from 'next/image';
 import { notFound } from 'next/navigation';
 import { createClient } from '@/utils/supabase/server';
 import { coverUrl } from '@/lib/openlibrary';
@@ -14,6 +13,7 @@ import PendingButton from '@/components/PendingButton';
 import { loadPostCardInteractions } from '@/lib/post-interactions';
 import TasteMatchBadge from '@/components/TasteMatchBadge';
 import { computeUserTasteMatch } from '@/lib/taste';
+import BookCoverImage from '@/components/BookCoverImage';
 
 function linkifyMentions(text: string, valid: Set<string>): React.ReactNode[] {
   const parts: React.ReactNode[] = [];
@@ -421,8 +421,8 @@ export default async function ProfilePage({
                             return (
                               <li key={i}>
                                 <Link href={`/book/${e.book_id}`} className="group flex flex-col">
-                                  <div className="aspect-[2/3] w-full overflow-hidden rounded bg-slate-100 group-hover:opacity-90">
-                                    {src && <Image src={src} alt={e.books?.title ?? ''} width={200} height={300} className="h-full w-full object-cover" />}
+                                  <div className="book-cover-fallback aspect-[2/3] w-full overflow-hidden rounded group-hover:opacity-90">
+                                    <BookCoverImage src={src} alt={e.books?.title ?? ''} width={200} height={300} className="relative z-10 h-full w-full object-cover" />
                                   </div>
                                   <p className="mt-1 truncate text-sm font-medium">{e.books?.title}</p>
                                   <p className="truncate text-xs text-slate-500">{e.books?.author}{e.rating ? ` · ${Number(e.rating)}★` : ''}</p>
@@ -448,8 +448,8 @@ export default async function ProfilePage({
                       return (
                         <li key={f.position}>
                           <Link href={`/book/${f.book_id}`} className="group block">
-                            <div className="aspect-[2/3] w-full overflow-hidden rounded bg-slate-100 group-hover:opacity-90">
-                              {src && <Image src={src} alt={f.books?.title ?? ''} width={200} height={300} className="h-full w-full object-cover" />}
+                            <div className="book-cover-fallback aspect-[2/3] w-full overflow-hidden rounded group-hover:opacity-90">
+                              <BookCoverImage src={src} alt={f.books?.title ?? ''} width={200} height={300} className="relative z-10 h-full w-full object-cover" />
                             </div>
                           </Link>
                         </li>
@@ -477,8 +477,8 @@ export default async function ProfilePage({
                       return (
                         <li key={b.book_id}>
                           <Link href={`/book/${b.book_id}`} className="group block">
-                            <div className="aspect-[2/3] w-full overflow-hidden rounded bg-slate-100 group-hover:opacity-90">
-                              {src && <Image src={src} alt={b.title ?? ''} width={200} height={300} className="h-full w-full object-cover" />}
+                            <div className="book-cover-fallback aspect-[2/3] w-full overflow-hidden rounded group-hover:opacity-90">
+                              <BookCoverImage src={src} alt={b.title ?? ''} width={200} height={300} className="relative z-10 h-full w-full object-cover" />
                             </div>
                             {b.rating != null && <p className="mt-1 text-center text-xs text-stone-500">{Number(b.rating)}★</p>}
                           </Link>
@@ -516,8 +516,8 @@ export default async function ProfilePage({
                   return (
                     <li key={i}>
                       <Link href={`/book/${e.book_id}`} title={e.books?.title} className="block">
-                        <div className="aspect-[2/3] w-full overflow-hidden rounded bg-slate-100 hover:opacity-90">
-                          {src && <Image src={src} alt={e.books?.title ?? ''} width={120} height={180} className="h-full w-full object-cover" />}
+                        <div className="book-cover-fallback aspect-[2/3] w-full overflow-hidden rounded hover:opacity-90">
+                          <BookCoverImage src={src} alt={e.books?.title ?? ''} width={120} height={180} className="relative z-10 h-full w-full object-cover" />
                         </div>
                       </Link>
                     </li>
@@ -731,8 +731,8 @@ export default async function ProfilePage({
                     return (
                       <li key={d.id} className="flex items-center gap-3 rounded-lg border border-stone-200 bg-white p-3">
                         <Link href={`/book/${d.book_id}`} className="flex-shrink-0">
-                          <div className="h-16 w-11 overflow-hidden rounded bg-slate-100">
-                            {src && <Image src={src} alt={d.books?.title ?? ''} width={44} height={64} className="h-full w-full object-cover" />}
+                          <div className="book-cover-fallback h-16 w-11 overflow-hidden rounded">
+                            <BookCoverImage src={src} alt={d.books?.title ?? ''} width={44} height={64} className="relative z-10 h-full w-full object-cover" />
                           </div>
                         </Link>
                         <div className="min-w-0 flex-1">

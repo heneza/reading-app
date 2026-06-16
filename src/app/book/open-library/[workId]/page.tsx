@@ -1,8 +1,8 @@
-import Image from 'next/image';
 import Link from 'next/link';
 import { notFound, redirect } from 'next/navigation';
 import { addToShelf } from '@/app/actions/shelf';
 import PendingButton from '@/components/PendingButton';
+import BookCoverImage from '@/components/BookCoverImage';
 import { coverUrl, fetchWorkDetails } from '@/lib/openlibrary';
 import { createClient } from '@/utils/supabase/server';
 
@@ -41,8 +41,8 @@ export default async function OpenLibraryBookPage({
       </Link>
 
       <div className="flex flex-col gap-6 sm:flex-row">
-        <div className="h-[240px] w-[160px] flex-shrink-0 overflow-hidden rounded bg-slate-200">
-          {cover && <Image src={cover} alt={title} width={160} height={240} className="h-full w-full object-cover" />}
+        <div className="book-cover-fallback h-[240px] w-[160px] flex-shrink-0 overflow-hidden rounded">
+          <BookCoverImage src={cover} alt={title} width={160} height={240} className="relative z-10 h-full w-full object-cover" />
         </div>
 
         <div className="min-w-0 flex-1">

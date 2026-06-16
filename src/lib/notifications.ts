@@ -3,6 +3,8 @@ export type NotificationLike = {
   actor_id?: string | null;
   post_id?: string | null;
   book_id?: string | null;
+  club_id?: string | null;
+  club_post_id?: string | null;
   read?: boolean;
 };
 
@@ -36,6 +38,14 @@ export function notificationText(
       return 'Your article was approved';
     case 'article_rejected':
       return 'Your article was not approved';
+    case 'club_announcement':
+      return `${actor} posted a club announcement`;
+    case 'club_reply':
+      return `${actor} replied to your club post`;
+    case 'club_current_book':
+      return `${actor} picked a club book`;
+    case 'club_mention':
+      return `${actor} mentioned you in a club`;
     default:
       return 'New notification';
   }
@@ -55,6 +65,13 @@ export function notificationHref(
       return notification.book_id ? `/book/${notification.book_id}` : '/notifications';
     case 'article_approved':
       return '/articles';
+    case 'club_announcement':
+    case 'club_reply':
+    case 'club_current_book':
+    case 'club_mention':
+      return notification.club_id
+        ? `/clubs/${notification.club_id}${notification.club_post_id ? `#post-${notification.club_post_id}` : ''}`
+        : '/clubs';
     default:
       return '/notifications';
   }

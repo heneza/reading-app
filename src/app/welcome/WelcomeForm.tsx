@@ -1,12 +1,12 @@
 'use client';
 
-import Image from 'next/image';
 import Link from 'next/link';
 import { useEffect, useMemo, useState, useTransition } from 'react';
 import { useRouter } from 'next/navigation';
 import { GENRES } from '@/lib/genres';
 import { coverUrl } from '@/lib/openlibrary';
 import { completeOnboarding } from '@/app/actions/profile';
+import BookCoverImage from '@/components/BookCoverImage';
 
 type StarterBook = {
   key: string;
@@ -191,15 +191,13 @@ export default function WelcomeForm({
                     <span aria-hidden="true" className="absolute inset-2 z-0 flex items-center justify-center overflow-hidden text-center text-[10px] font-semibold uppercase leading-tight tracking-wide text-stone-600">
                       {book.title.slice(0, 36)}
                     </span>
-                    {src && (
-                      <Image
-                        src={src}
-                        alt={book.title}
-                        width={160}
-                        height={240}
-                        className="relative z-10 h-full w-full object-cover"
-                      />
-                    )}
+                    <BookCoverImage
+                      src={src}
+                      alt={book.title}
+                      width={160}
+                      height={240}
+                      className="relative z-10 h-full w-full object-cover"
+                    />
                   </div>
                   <p className="mt-2 line-clamp-2 text-sm font-medium text-stone-800">{book.title}</p>
                   {book.author && <p className="line-clamp-1 text-xs text-stone-500">{book.author}</p>}

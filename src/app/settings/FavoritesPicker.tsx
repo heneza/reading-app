@@ -2,9 +2,9 @@
 
 import { useState, useTransition } from 'react';
 import { useRouter } from 'next/navigation';
-import Image from 'next/image';
 import { coverUrl } from '@/lib/openlibrary';
 import { setFavoriteBooks } from '@/app/actions/favorites';
+import BookCoverImage from '@/components/BookCoverImage';
 
 type ShelfBook = { id: string; title: string; coverId?: number | null };
 
@@ -75,19 +75,11 @@ export default function FavoritesPicker({
                 title={b.title}
               >
                 <div
-                  className={`aspect-[2/3] w-full overflow-hidden rounded bg-slate-100 ${
+                  className={`book-cover-fallback aspect-[2/3] w-full overflow-hidden rounded ${
                     on ? 'ring-2 ring-brand ring-offset-2' : 'hover:opacity-90'
                   }`}
                 >
-                  {src && (
-                    <Image
-                      src={src}
-                      alt={b.title}
-                      width={200}
-                      height={300}
-                      className="h-full w-full object-cover"
-                    />
-                  )}
+                  <BookCoverImage src={src} alt={b.title} width={200} height={300} className="relative z-10 h-full w-full object-cover" />
                 </div>
                 {on && (
                   <span className="absolute -right-1 -top-1 flex h-5 w-5 items-center justify-center rounded-full bg-brand text-[11px] font-semibold text-white">

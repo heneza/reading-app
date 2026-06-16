@@ -1,6 +1,6 @@
 import Link from 'next/link';
-import Image from 'next/image';
 import { coverUrl } from '@/lib/openlibrary';
+import BookCoverImage from '@/components/BookCoverImage';
 
 type Item = { bookId: string; title?: string | null; coverId?: number | null };
 
@@ -20,7 +20,7 @@ export default function BookMarquee({ items, reverse = false }: { items: Item[];
                 <span aria-hidden="true" className="absolute inset-2 z-0 flex items-center justify-center overflow-hidden text-center text-[10px] font-semibold uppercase leading-tight tracking-wide text-stone-600">
                   {fallback}
                 </span>
-                {src && <Image src={src} alt={it.title ?? ''} width={184} height={276} className="relative z-10 h-full w-full object-cover" />}
+                <BookCoverImage src={src} alt={it.title ?? ''} width={184} height={276} className="relative z-10 h-full w-full object-cover" />
               </div>
             </Link>
           );

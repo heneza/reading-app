@@ -1,6 +1,6 @@
 import Link from 'next/link';
-import Image from 'next/image';
 import { coverUrl } from '@/lib/openlibrary';
+import BookCoverImage from '@/components/BookCoverImage';
 
 export default function ListCard({
   id,
@@ -33,7 +33,7 @@ export default function ListCard({
               <span aria-hidden="true" className="absolute inset-2 z-0 flex items-center justify-center text-center text-xs font-semibold text-stone-600">
                 {i + 1}
               </span>
-              {src && <Image src={src} alt="" width={120} height={180} className="relative z-10 h-full w-full object-cover" />}
+              <BookCoverImage src={src} alt="" width={120} height={180} className="relative z-10 h-full w-full object-cover" />
             </div>
           );
         })}

@@ -320,22 +320,22 @@ export default function InboxWidget({
   return (
     <>
       {open && (
-        <div className="fixed bottom-20 left-5 z-40 flex h-[30rem] w-[min(23rem,calc(100vw-2.5rem))] flex-col overflow-hidden rounded-2xl border border-stone-200 bg-white shadow-card">
-          <div className="flex items-center justify-between border-b border-stone-200 px-4 py-2.5">
+        <div className="fixed bottom-20 left-5 z-40 flex h-[30rem] w-[min(23rem,calc(100vw-2.5rem))] flex-col overflow-hidden rounded-2xl border border-brand/40 bg-white shadow-card">
+          <div className="flex items-center justify-between border-b border-brand/30 bg-brand px-4 py-2.5 text-white">
             {active ? (
               <div className="flex min-w-0 items-center gap-2">
                 <Avatar src={active.avatarUrl} name={active.displayName ?? active.username} size={28} />
                 <div className="min-w-0">
-                  <p className="truncate text-sm font-semibold text-stone-700">{active.displayName ?? `@${active.username}`}</p>
-                  <Link href={`/messages/${active.username}`} className="text-xs text-brand hover:underline">
+                  <p className="truncate text-sm font-semibold">{active.displayName ?? `@${active.username}`}</p>
+                  <Link href={`/messages/${active.username}`} className="text-xs text-white/80 hover:text-white hover:underline">
                     Open inbox
                   </Link>
                 </div>
               </div>
             ) : (
-              <span className="text-sm font-semibold text-stone-700">Inbox</span>
+              <span className="text-sm font-semibold">Inbox</span>
             )}
-            <button onClick={closePanel} aria-label="Close inbox" className="rounded-full px-2 text-stone-400 hover:text-brand">×</button>
+            <button onClick={closePanel} aria-label="Close inbox" className="rounded-full px-2 text-white/75 hover:text-white">×</button>
           </div>
 
           {active ? (
@@ -442,7 +442,7 @@ export default function InboxWidget({
           }
         }}
         aria-label="Open inbox"
-        className="fixed bottom-5 left-5 z-40 flex h-12 items-center gap-2 rounded-full bg-stone-800 px-4 font-medium text-white shadow-card transition hover:bg-brand"
+        className="fixed bottom-5 left-5 z-40 flex h-12 items-center gap-2 rounded-full bg-brand px-4 font-medium text-white shadow-card transition hover:bg-brand-dark"
       >
         <span className="relative">
           <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
