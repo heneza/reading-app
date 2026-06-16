@@ -269,7 +269,6 @@ function ExploreRightRail({
   shelfTotal,
   ratedCount,
   averageRating,
-  currentRead,
   activity,
   nameById,
   avatarById,
@@ -279,7 +278,6 @@ function ExploreRightRail({
   shelfTotal: number;
   ratedCount: number;
   averageRating: number | null;
-  currentRead: ShelfEntry | null;
   activity: Activity[];
   nameById: Map<string, string>;
   avatarById: Map<string, string | null>;
@@ -314,31 +312,6 @@ function ExploreRightRail({
             ? `${shelfTotal} books shelved`
             : `${averageRating.toFixed(1)}★ avg from ${ratedCount} ratings`}
         </p>
-      </section>
-
-      <section className="rounded-lg border border-stone-200 bg-white p-4">
-        <p className="text-xs font-semibold uppercase tracking-wide text-stone-400">Continue</p>
-        {currentRead ? (
-          <Link href={`/book/${currentRead.book_id}`} className="mt-3 flex gap-3 hover:text-brand">
-            <div className="book-cover-fallback h-20 w-14 flex-shrink-0 overflow-hidden rounded">
-              {coverUrl(currentRead.books?.cover_id, 'S') && (
-                <Image
-                  src={coverUrl(currentRead.books?.cover_id, 'S') as string}
-                  alt=""
-                  width={56}
-                  height={84}
-                  className="relative z-10 h-full w-full object-cover"
-                />
-              )}
-            </div>
-            <div className="min-w-0">
-              <p className="line-clamp-3 text-sm font-semibold text-stone-800">{currentRead.books?.title ?? 'Current read'}</p>
-              <p className="mt-1 line-clamp-2 text-xs text-stone-500">{currentRead.books?.author}</p>
-            </div>
-          </Link>
-        ) : (
-          <p className="mt-2 text-sm text-stone-500">No current read yet.</p>
-        )}
       </section>
 
       <section className="rounded-lg border border-stone-200 bg-white p-4">
@@ -755,7 +728,6 @@ export default async function ExplorePage({
   const averageRating = ratedEntries.length
     ? ratedEntries.reduce((sum, entry) => sum + Number(entry.rating), 0) / ratedEntries.length
     : null;
-  const currentRead = shelfEntries.find((entry) => entry.status === 'reading') ?? null;
 
   let forYou: CoverItem[] = [];
   if (mySlugs.length) {
@@ -907,7 +879,6 @@ export default async function ExplorePage({
           shelfTotal={shelfEntries.length}
           ratedCount={ratedEntries.length}
           averageRating={averageRating}
-          currentRead={currentRead}
           activity={activity}
           nameById={nameById}
           avatarById={avatarById}
