@@ -7,6 +7,9 @@ import { GENRES, genreName } from '@/lib/genres';
 import { GENRE_SUBJECTS } from '@/lib/genre-subjects';
 import { fetchSubjectWorks } from '@/lib/openlibrary';
 
+const MIN_SEEDED_LIST_BOOKS = 6;
+const SEEDED_LIST_BOOKS = 12;
+
 async function myUsername(supabase: ReturnType<typeof createClient>, userId: string) {
   const { data } = await supabase.from('profiles').select('username, is_admin').eq('id', userId).maybeSingle();
   return data;
@@ -114,8 +117,8 @@ export async function seedGenreLists(formData: FormData) {
     const subject = GENRE_SUBJECTS[g.slug];
     if (!subject) continue;
 
-    const works = (await fetchSubjectWorks(subject, 30)).filter((w) => w.coverId).slice(0, 20);
-    if (works.length === 0) continue;
+    const works = (await fetchSubjectWorks(subject, 60)).filter((w) => w.coverId).slice(0, SEEDED_LIST_BOOKS);
+    if (works.length < MIN_SEEDED_LIST_BOOKS) continue;
 
     // Upsert each work into the books cache, preserving order.
     const ids: string[] = [];
@@ -130,7 +133,7 @@ export async function seedGenreLists(formData: FormData) {
         .single();
       if (book?.id) ids.push(book.id);
     }
-    if (ids.length === 0) continue;
+    if (ids.length < MIN_SEEDED_LIST_BOOKS) continue;
 
     // Find or create the system list for this genre.
     const { data: existing } = await supabase
@@ -163,5 +166,6 @@ export async function seedGenreLists(formData: FormData) {
   }
 
   revalidatePath('/lists');
+  revalidatePath('/');
   redirect('/lists');
 }

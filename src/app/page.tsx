@@ -11,6 +11,9 @@ import { htmlToText } from '@/lib/sanitize';
 
 export const dynamic = 'force-dynamic';
 
+const MIN_EXPLORE_LIST_BOOKS = 6;
+const EXPLORE_LIST_BOOKS = 12;
+
 type CoverItem = {
   bookId: string;
   title?: string | null;
@@ -217,12 +220,16 @@ function PopularTagsCard({ tags }: { tags: { tag: string; count: number }[] }) {
 function DiscoveryRail({
   article,
   popularTags = [],
+  showTitle = false,
 }: {
   article: ArticlePreview | null;
   popularTags?: { tag: string; count: number }[];
+  showTitle?: boolean;
 }) {
   return (
     <aside className="space-y-3 lg:sticky lg:top-24">
+      {showTitle && <h1 className="pb-12 text-2xl font-bold">Explore</h1>}
+
       <Link
         href={article ? `/articles#article-${article.id}` : '/articles'}
         className="block rounded-lg border border-stone-200 bg-white p-4 transition hover:border-brand"
@@ -466,10 +473,10 @@ export default async function ExplorePage({
       .select('id, title, owner_id')
       .order('created_at', { ascending: false })
       .limit(60);
-    const all = (ls ?? []).slice().sort(() => Math.random() - 0.5).slice(0, 8);
+    const all = (ls ?? []).slice().sort(() => Math.random() - 0.5);
     if (all.length) {
       // One query for the items of all candidate lists, then pick a random
-      // one that actually has books (was up to 6 sequential queries before).
+      // one that has enough books to keep Explore visually full.
       const { data: its } = await supabase
         .from('list_items')
         .select('list_id, position, book_id, books ( title, author, cover_id )')
@@ -478,10 +485,11 @@ export default async function ExplorePage({
       const byList = new Map<string, any[]>();
       (its ?? []).forEach((it: any) => {
         const arr = byList.get(it.list_id) ?? [];
-        if (arr.length < 12) arr.push(it);
+        if (arr.length < EXPLORE_LIST_BOOKS) arr.push(it);
         byList.set(it.list_id, arr);
       });
-      const chosen = all.find((l: any) => (byList.get(l.id)?.length ?? 0) > 0);
+      const eligible = all.filter((l: any) => (byList.get(l.id)?.length ?? 0) >= MIN_EXPLORE_LIST_BOOKS);
+      const chosen = eligible[0];
       if (chosen) {
         let ownerName: string | null = null;
         if (chosen.owner_id) {
@@ -807,15 +815,11 @@ export default async function ExplorePage({
   (authorsRes.data ?? []).forEach((a: any) => postAuthors.set(a.id, a));
 
   return (
-    <div className="relative left-1/2 w-[min(100vw-2rem,1360px)] -translate-x-1/2 space-y-10">
-      <header>
-        <h1 className="text-2xl font-bold">Explore</h1>
-      </header>
-
+    <div className="relative left-1/2 w-[min(100vw-2rem,1360px)] -translate-x-1/2">
       <div className="grid gap-8 lg:grid-cols-[15rem_minmax(0,1fr)] lg:items-start xl:grid-cols-[15rem_minmax(0,1fr)_17rem]">
-        <DiscoveryRail article={articlePreview} popularTags={popularTags} />
+        <DiscoveryRail article={articlePreview} popularTags={popularTags} showTitle />
 
-        <div className="min-w-0 space-y-10">
+        <div className="min-w-0 space-y-8">
           {friendsView ? (
             <FriendsActivityFeed
               activity={activity}
