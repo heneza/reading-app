@@ -5,6 +5,7 @@ import Avatar from '@/components/Avatar';
 import SearchSuggestBox from '@/components/SearchSuggestBox';
 import PendingButton from '@/components/PendingButton';
 import NotificationBell from '@/components/NotificationBell';
+import NavPrimaryLinks from '@/components/NavPrimaryLinks';
 
 type ViewerProfile = {
   username: string | null;
@@ -61,18 +62,7 @@ export default async function Nav({
           {viewerId && (
             <NotificationBell unread={notifUnread} />
           )}
-          <Link
-            href="/lists"
-            className="hidden rounded-full px-2.5 py-1.5 text-slate-600 transition hover:bg-brand-soft hover:text-brand min-[360px]:inline-flex sm:px-3"
-          >
-            Lists
-          </Link>
-          <Link
-            href="/articles"
-            className="hidden rounded-full px-3 py-1.5 text-slate-600 transition hover:bg-brand-soft hover:text-brand sm:inline-flex"
-          >
-            Articles
-          </Link>
+          <NavPrimaryLinks username={username} />
           {viewerId ? (
             /* Profile menu (reveals on hover) */
             <div className="group relative">
@@ -106,12 +96,6 @@ export default async function Nav({
                         {unread}
                       </span>
                     )}
-                  </Link>
-                  <Link href="/goals" className={item}>
-                    Reading goals
-                  </Link>
-                  <Link href="/quotes" className={item}>
-                    Quotes
                   </Link>
                   <Link href="/settings" className={item}>
                     Settings

@@ -38,10 +38,10 @@ function linkifyMentions(text: string, valid: Set<string>): React.ReactNode[] {
 const STATUS_LABEL: Record<string, string> = {
   want_to_read: 'Want to read',
   reading: 'Reading',
-  read: 'Read',
-  dnf: 'Did not finish',
+  read: 'Books read',
+  dnf: 'DNF',
 };
-const STATUS_ORDER = ['reading', 'want_to_read', 'read', 'dnf'];
+const STATUS_ORDER = ['read', 'reading', 'want_to_read', 'dnf'];
 const TAB_BAR = ['posts', 'likes', 'replies', 'reviews'] as const;
 const ALL_TABS = ['posts', 'likes', 'replies', 'reviews', 'diary', 'shelf'];
 type Tab = 'posts' | 'likes' | 'replies' | 'reviews' | 'diary' | 'shelf';
@@ -261,11 +261,13 @@ export default async function ProfilePage({
   });
   const recentReadRow = recentRead.slice(0, 4);
 
-  const grouped = STATUS_ORDER.map((status) => ({ status, items: list.filter((e: any) => e.status === status) })).filter((g) => g.items.length > 0);
+  const grouped = STATUS_ORDER.map((status) => ({ status, items: list.filter((e: any) => e.status === status) }));
   const connHref = (t: string) => `/u/${profile.username}/connections?type=${t}`;
-  const tabHref = (t: string) => `/u/${profile.username}?tab=${t}`;
+  const tabHref = (t: string) => `/u/${profile.username}?tab=${t}#profile-content`;
+  const shelfHref = (suffix = '') => `/u/${profile.username}?tab=shelf${suffix}#profile-shelf`;
   const TAB_LABEL: Record<string, string> = { posts: 'Posts', likes: 'Likes', replies: 'Replies', reviews: 'Reviews', diary: 'Diary' };
   const tasteMatch = await tasteMatchPromise;
+  const isShelfView = tab === 'shelf';
 
   return (
     <div>
@@ -292,7 +294,7 @@ export default async function ProfilePage({
                 <Link href={connHref('followers')} className="hover:text-brand"><span className="font-medium text-slate-700">{followerIds.length}</span> followers</Link>
                 <Link href={connHref('following')} className="hover:text-brand"><span className="font-medium text-slate-700">{followingSet.size}</span> following</Link>
                 <Link href={connHref('friends')} className="hover:text-brand"><span className="font-medium text-slate-700">{friendCount}</span> friends</Link>
-                <Link href={`/u/${profile.username}?tab=shelf`} className="hover:text-brand"><span className="font-medium text-slate-700">{list.length}</span> book{list.length === 1 ? '' : 's'}</Link>
+                <Link href={shelfHref()} className="hover:text-brand"><span className="font-medium text-slate-700">{list.length}</span> book{list.length === 1 ? '' : 's'}</Link>
               </p>
 
               {profile.bio && <p className="mt-2 whitespace-pre-wrap text-slate-700">{linkifyMentions(profile.bio, validMentions)}</p>}
@@ -302,8 +304,14 @@ export default async function ProfilePage({
 
             {/* Right: actions + socials above the reading bars */}
             <div className="flex flex-shrink-0 flex-col items-end gap-3">
-              {((!isOwnProfile && user) || profile.website || profile.instagram || profile.twitter || profile.spotify_url) && (
+              {(isOwnProfile || (!isOwnProfile && user) || profile.website || profile.instagram || profile.twitter || profile.spotify_url) && (
                 <div className="flex flex-wrap items-center justify-end gap-2 sm:gap-3">
+                  {isOwnProfile && (
+                    <>
+                      <Link href="/goals" className="rounded-full border border-stone-300 px-3 py-1.5 text-sm font-medium text-stone-600 transition hover:border-brand hover:text-brand">Goals</Link>
+                      <Link href="/quotes" className="rounded-full border border-stone-300 px-3 py-1.5 text-sm font-medium text-stone-600 transition hover:border-brand hover:text-brand">Quotes</Link>
+                    </>
+                  )}
                   {!isOwnProfile && user && (
                     <>
                       <Link href={`/messages/${profile.username}`} title="Message" aria-label="Message"
@@ -383,71 +391,119 @@ export default async function ProfilePage({
 
       {/* --- Favourites + Shelf (same line) --- */}
       <div className="mt-8 flex flex-col gap-6 sm:flex-row sm:items-start">
-        <div className="min-w-0 flex-1">
-          <section>
-            <h2 className="mb-3 text-sm font-semibold uppercase tracking-wide text-slate-400">Favourites</h2>
-            {favs.length > 0 ? (
-              <ul className="grid max-w-md grid-cols-4 gap-3">
-                {favs.map((f: any) => {
-                  const src = coverUrl(f.books?.cover_id, 'M');
+        <div id={isShelfView ? 'profile-shelf' : undefined} className="min-w-0 flex-1 scroll-mt-24">
+          {isShelfView ? (
+            <section className="space-y-7">
+              {list.length === 0 ? (
+                <p className="rounded-lg border border-stone-200 bg-white p-4 text-sm text-slate-500">No books on this shelf yet.</p>
+              ) : (
+                grouped.map((group) => {
+                  const expanded = searchParams?.all === group.status;
+                  const shelfItems = expanded ? group.items : group.items.slice(0, 5);
                   return (
-                    <li key={f.position}>
-                      <Link href={`/book/${f.book_id}`} className="group block">
-                        <div className="aspect-[2/3] w-full overflow-hidden rounded bg-slate-100 group-hover:opacity-90">
-                          {src && <Image src={src} alt={f.books?.title ?? ''} width={200} height={300} className="h-full w-full object-cover" />}
-                        </div>
-                      </Link>
-                    </li>
+                    <div key={group.status}>
+                      <div className="mb-3 flex items-end justify-between gap-3 border-b border-stone-200 pb-2">
+                        <h2 className="text-sm font-semibold uppercase tracking-wide text-slate-400">{STATUS_LABEL[group.status]} ({group.items.length})</h2>
+                        {group.items.length > 5 && (
+                          <Link href={shelfHref(expanded ? '' : `&all=${group.status}`)} className="whitespace-nowrap text-sm text-brand hover:underline">
+                            {expanded ? 'Show fewer' : 'Click to view all'}
+                          </Link>
+                        )}
+                      </div>
+                      {shelfItems.length === 0 ? (
+                        <p className="rounded-lg border border-dashed border-stone-200 bg-stone-50 p-4 text-sm text-stone-400">No books here yet.</p>
+                      ) : (
+                        <ul className="grid grid-cols-3 gap-3 sm:grid-cols-4 md:grid-cols-5">
+                          {shelfItems.map((e: any, i: number) => {
+                            const src = coverUrl(e.books?.cover_id, 'M');
+                            return (
+                              <li key={i}>
+                                <Link href={`/book/${e.book_id}`} className="group flex flex-col">
+                                  <div className="aspect-[2/3] w-full overflow-hidden rounded bg-slate-100 group-hover:opacity-90">
+                                    {src && <Image src={src} alt={e.books?.title ?? ''} width={200} height={300} className="h-full w-full object-cover" />}
+                                  </div>
+                                  <p className="mt-1 truncate text-sm font-medium">{e.books?.title}</p>
+                                  <p className="truncate text-xs text-slate-500">{e.books?.author}{e.rating ? ` · ${Number(e.rating)}★` : ''}</p>
+                                </Link>
+                              </li>
+                            );
+                          })}
+                        </ul>
+                      )}
+                    </div>
                   );
-                })}
-              </ul>
-            ) : (
-              <>
-                <ul className="grid max-w-md grid-cols-4 gap-3">
-                  {[0, 1, 2, 3].map((i) => (
-                    <li key={i}><div className="aspect-[2/3] w-full rounded border border-dashed border-stone-200 bg-stone-50" /></li>
-                  ))}
-                </ul>
-                <p className="mt-2 text-sm text-stone-400">{isOwnProfile ? 'Pick your top books in Edit profile.' : 'No favourite books yet.'}</p>
-              </>
-            )}
-          </section>
+                })
+              )}
+            </section>
+          ) : (
+            <>
+              <section>
+                <h2 className="mb-3 text-sm font-semibold uppercase tracking-wide text-slate-400">Favourites</h2>
+                {favs.length > 0 ? (
+                  <ul className="grid max-w-md grid-cols-4 gap-3">
+                    {favs.map((f: any) => {
+                      const src = coverUrl(f.books?.cover_id, 'M');
+                      return (
+                        <li key={f.position}>
+                          <Link href={`/book/${f.book_id}`} className="group block">
+                            <div className="aspect-[2/3] w-full overflow-hidden rounded bg-slate-100 group-hover:opacity-90">
+                              {src && <Image src={src} alt={f.books?.title ?? ''} width={200} height={300} className="h-full w-full object-cover" />}
+                            </div>
+                          </Link>
+                        </li>
+                      );
+                    })}
+                  </ul>
+                ) : (
+                  <>
+                    <ul className="grid max-w-md grid-cols-4 gap-3">
+                      {[0, 1, 2, 3].map((i) => (
+                        <li key={i}><div className="aspect-[2/3] w-full rounded border border-dashed border-stone-200 bg-stone-50" /></li>
+                      ))}
+                    </ul>
+                    <p className="mt-2 text-sm text-stone-400">{isOwnProfile ? 'Pick your top books in Edit profile.' : 'No favourite books yet.'}</p>
+                  </>
+                )}
+              </section>
 
-          <section className="mt-8">
-            <h2 className="mb-3 text-sm font-semibold uppercase tracking-wide text-slate-400">Recently read ({recentReadRow.length})</h2>
-            {recentReadRow.length > 0 ? (
-              <ul className="grid max-w-md grid-cols-4 gap-3">
-                {recentReadRow.map((b) => {
-                  const src = coverUrl(b.cover_id, 'M');
-                  return (
-                    <li key={b.book_id}>
-                      <Link href={`/book/${b.book_id}`} className="group block">
-                        <div className="aspect-[2/3] w-full overflow-hidden rounded bg-slate-100 group-hover:opacity-90">
-                          {src && <Image src={src} alt={b.title ?? ''} width={200} height={300} className="h-full w-full object-cover" />}
-                        </div>
-                        {b.rating != null && <p className="mt-1 text-center text-xs text-stone-500">{Number(b.rating)}★</p>}
-                      </Link>
-                    </li>
-                  );
-                })}
-              </ul>
-            ) : (
-              <>
-                <ul className="grid max-w-md grid-cols-4 gap-3">
-                  {[0, 1, 2, 3].map((i) => (
-                    <li key={i}><div className="aspect-[2/3] w-full rounded border border-dashed border-stone-200 bg-stone-50" /></li>
-                  ))}
-                </ul>
-                <p className="mt-2 text-sm text-stone-400">{isOwnProfile ? 'Books you read will show up here. Search a book and log it.' : 'No books read yet.'}</p>
-              </>
-            )}
-          </section>
+              <section className="mt-8">
+                <h2 className="mb-3 text-sm font-semibold uppercase tracking-wide text-slate-400">Recently read ({recentReadRow.length})</h2>
+                {recentReadRow.length > 0 ? (
+                  <ul className="grid max-w-md grid-cols-4 gap-3">
+                    {recentReadRow.map((b) => {
+                      const src = coverUrl(b.cover_id, 'M');
+                      return (
+                        <li key={b.book_id}>
+                          <Link href={`/book/${b.book_id}`} className="group block">
+                            <div className="aspect-[2/3] w-full overflow-hidden rounded bg-slate-100 group-hover:opacity-90">
+                              {src && <Image src={src} alt={b.title ?? ''} width={200} height={300} className="h-full w-full object-cover" />}
+                            </div>
+                            {b.rating != null && <p className="mt-1 text-center text-xs text-stone-500">{Number(b.rating)}★</p>}
+                          </Link>
+                        </li>
+                      );
+                    })}
+                  </ul>
+                ) : (
+                  <>
+                    <ul className="grid max-w-md grid-cols-4 gap-3">
+                      {[0, 1, 2, 3].map((i) => (
+                        <li key={i}><div className="aspect-[2/3] w-full rounded border border-dashed border-stone-200 bg-stone-50" /></li>
+                      ))}
+                    </ul>
+                    <p className="mt-2 text-sm text-stone-400">{isOwnProfile ? 'Books you read will show up here. Search a book and log it.' : 'No books read yet.'}</p>
+                  </>
+                )}
+              </section>
+            </>
+          )}
         </div>
         <aside className="space-y-4 sm:w-80 sm:flex-shrink-0">
+          {!isShelfView && (
           <div className="rounded-lg border border-stone-200 bg-white p-3">
             <div className="mb-2 flex items-center justify-between">
               <h3 className="text-sm font-semibold text-stone-700">Shelf</h3>
-              <Link href={`/u/${profile.username}?tab=shelf`} className="text-xs text-brand hover:underline">Visit shelf →</Link>
+              <Link href={shelfHref()} className="text-xs text-brand hover:underline">Visit shelf →</Link>
             </div>
             {list.length === 0 ? (
               <p className="text-xs text-stone-400">No books yet.</p>
@@ -468,13 +524,14 @@ export default async function ProfilePage({
               </ul>
             )}
           </div>
+          )}
 
           {/* Lists (own + liked) */}
           {(profileLists.length > 0 || isOwnProfile) && (
-            <div className="rounded-lg border border-stone-200 bg-white p-3">
+            <div id="profile-lists-card" className="scroll-mt-24 rounded-lg border border-stone-200 bg-white p-3">
               <div className="mb-2 flex items-center justify-between">
                 <h3 className="text-sm font-semibold text-stone-700">Lists</h3>
-                <Link href="/lists" className="text-xs text-brand hover:underline">Browse →</Link>
+                <Link href="#profile-lists-card" className="text-xs text-brand hover:underline">View ↓</Link>
               </div>
               {profileLists.length === 0 ? (
                 <p className="text-xs text-stone-400">No lists yet.</p>
@@ -495,10 +552,10 @@ export default async function ProfilePage({
           )}
 
           {/* Diary preview — Letterboxd-style, grouped by month */}
-          <div className="rounded-lg border border-stone-200 bg-white p-3">
+          <div id="profile-diary-card" className="scroll-mt-24 rounded-lg border border-stone-200 bg-white p-3">
             <div className="mb-2 flex items-center justify-between">
               <h3 className="text-sm font-semibold text-stone-700">Diary</h3>
-              <Link href={`/u/${profile.username}?tab=diary`} className="text-xs text-brand hover:underline">Visit diary →</Link>
+              <Link href={tabHref('diary')} className="text-xs text-brand hover:underline">Visit diary →</Link>
             </div>
             {diaryPreview.length === 0 ? (
               <p className="text-xs text-stone-400">No entries yet.</p>
@@ -545,7 +602,8 @@ export default async function ProfilePage({
       </div>
 
       {/* --- Tabs --- */}
-      <div className="mt-8">
+      {!isShelfView && (
+      <div id="profile-content" className="mt-8 scroll-mt-24">
         <div className="min-w-0">
           {/* Tab bar */}
           <div className="flex flex-wrap gap-1 border-b border-stone-200 text-sm">
@@ -565,9 +623,9 @@ export default async function ProfilePage({
                   <div className="mb-4 flex flex-wrap items-center gap-2 text-xs text-stone-500">
                     <span>Top tags:</span>
                     {topTags.map((t) => (
-                      <Link key={t} href={`/u/${profile.username}?tab=posts&tag=${encodeURIComponent(t)}`} className={`rounded-full px-2 py-0.5 ${tagFilter === t ? 'bg-brand text-white' : 'bg-brand-soft text-brand hover:underline'}`}>#{t}</Link>
+                      <Link key={t} href={`/u/${profile.username}?tab=posts&tag=${encodeURIComponent(t)}#profile-content`} className={`rounded-full px-2 py-0.5 ${tagFilter === t ? 'bg-brand text-white' : 'bg-brand-soft text-brand hover:underline'}`}>#{t}</Link>
                     ))}
-                    {tagFilter && <Link href={`/u/${profile.username}?tab=posts`} className="text-stone-400 hover:text-brand">clear ✕</Link>}
+                    {tagFilter && <Link href={tabHref('posts')} className="text-stone-400 hover:text-brand">clear ✕</Link>}
                   </div>
                 )}
                 {feed.length === 0 ? (
@@ -687,48 +745,10 @@ export default async function ProfilePage({
               )
             )}
 
-            {/* SHELF (full, reached via "Visit shelf") */}
-            {tab === 'shelf' && (
-              list.length === 0 ? (
-                <p className="text-sm text-slate-500">No books on this shelf yet.</p>
-              ) : (
-                <div className="space-y-8">
-                  {grouped.map((group) => {
-                    const expanded = searchParams?.all === group.status;
-                    const shelfItems = expanded ? group.items : group.items.slice(0, 5);
-                    return (
-                    <section key={group.status}>
-                      <h2 className="mb-3 text-sm font-semibold uppercase tracking-wide text-slate-400">{STATUS_LABEL[group.status]} ({group.items.length})</h2>
-                      <ul className="grid grid-cols-3 gap-3 sm:grid-cols-4 md:grid-cols-5">
-                        {shelfItems.map((e: any, i: number) => {
-                          const src = coverUrl(e.books?.cover_id, 'M');
-                          return (
-                            <li key={i}>
-                              <Link href={`/book/${e.book_id}`} className="group flex flex-col">
-                                <div className="aspect-[2/3] w-full overflow-hidden rounded bg-slate-100 group-hover:opacity-90">
-                                  {src && <Image src={src} alt={e.books?.title ?? ''} width={200} height={300} className="h-full w-full object-cover" />}
-                                </div>
-                                <p className="mt-1 truncate text-sm font-medium">{e.books?.title}</p>
-                                <p className="truncate text-xs text-slate-500">{e.books?.author}{e.rating ? ` · ${Number(e.rating)}★` : ''}</p>
-                              </Link>
-                            </li>
-                          );
-                        })}
-                      </ul>
-                      {group.items.length > 5 && (
-                        <Link href={`/u/${profile.username}?tab=shelf${expanded ? '' : `&all=${group.status}`}`} className="mt-2 inline-block text-sm text-brand hover:underline">
-                          {expanded ? 'Show less' : `See all (${group.items.length}) →`}
-                        </Link>
-                      )}
-                    </section>
-                    );
-                  })}
-                </div>
-              )
-            )}
           </div>
         </div>
       </div>
+      )}
     </div>
   );
 }
