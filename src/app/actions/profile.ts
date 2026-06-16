@@ -160,12 +160,14 @@ export async function setVisibility(formData: FormData) {
   const valid = ['public', 'friends', 'private'];
   const likes = String(formData.get('likes_visibility') ?? 'public');
   const comments = String(formData.get('comments_visibility') ?? 'public');
+  const diary = String(formData.get('diary_visibility') ?? 'public');
 
   await supabase
     .from('profiles')
     .update({
       likes_visibility: valid.includes(likes) ? likes : 'public',
       comments_visibility: valid.includes(comments) ? comments : 'public',
+      diary_visibility: valid.includes(diary) ? diary : 'public',
     })
     .eq('id', user.id);
 

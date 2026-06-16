@@ -11,13 +11,6 @@ import { htmlToText } from '@/lib/sanitize';
 
 export const dynamic = 'force-dynamic';
 
-const VERB: Record<string, string> = {
-  reading: 'is reading',
-  want_to_read: 'wants to read',
-  read: 'read',
-  dnf: 'gave up on',
-};
-
 type CoverItem = {
   bookId: string;
   title?: string | null;
@@ -34,14 +27,15 @@ type ArticlePreview = {
 };
 
 type Activity = {
+  id: string;
   at: string;
   userId: string;
-  kind: 'shelf' | 'review';
-  status?: string;
-  rating?: number | null;
+  kind: 'post' | 'article' | 'repost' | 'review' | 'quote' | 'list';
+  href?: string;
+  title: string;
   body?: string;
-  bookId: string;
-  book: any;
+  tags?: string[];
+  targetUserId?: string | null;
 };
 
 type ShelfEntry = {
@@ -73,7 +67,160 @@ function articleTitle(text: string) {
   return trimText(firstSentence, 64) || 'Read the latest article';
 }
 
-function DiscoveryRail({ article }: { article: ArticlePreview | null }) {
+function activityHref(item: Activity, username: string) {
+  return item.href ?? `/u/${username}?tab=posts#profile-content`;
+}
+
+function activityVerb(kind: Activity['kind']) {
+  switch (kind) {
+    case 'article':
+      return 'published';
+    case 'repost':
+      return 'reposted';
+    case 'review':
+      return 'reviewed';
+    case 'quote':
+      return 'shared';
+    case 'list':
+      return 'created';
+    default:
+      return 'posted';
+  }
+}
+
+function activityLabel(kind: Activity['kind']) {
+  switch (kind) {
+    case 'article':
+      return 'Article';
+    case 'repost':
+      return 'Repost';
+    case 'review':
+      return 'Review';
+    case 'quote':
+      return 'Quote';
+    case 'list':
+      return 'List';
+    default:
+      return 'Post';
+  }
+}
+
+function FriendsActivityFeed({
+  activity,
+  followingCount,
+  nameById,
+  avatarById,
+}: {
+  activity: Activity[];
+  followingCount: number;
+  nameById: Map<string, string>;
+  avatarById: Map<string, string | null>;
+}) {
+  return (
+    <section>
+      <div className="mb-4 flex flex-wrap items-end justify-between gap-3">
+        <div>
+          <h2 className="text-lg font-semibold">Friends activity</h2>
+          <p className="mt-1 text-sm text-stone-500">Public posts, articles, reposts, reviews, quotes, and lists.</p>
+        </div>
+        <Link href="/" className="text-sm text-brand hover:underline">Back to Explore</Link>
+      </div>
+
+      {activity.length === 0 ? (
+        <p className="rounded-lg border border-stone-200 bg-white p-4 text-sm text-stone-500">
+          {followingCount === 0 ? (
+            <>
+              You&apos;re not following anyone yet.{' '}
+              <Link href="/search" className="text-brand underline">
+                Find readers
+              </Link>{' '}
+              to fill your feed.
+            </>
+          ) : (
+            'No public activity from the people you follow yet.'
+          )}
+        </p>
+      ) : (
+        <ul className="space-y-3">
+          {activity.map((item) => {
+            const uname = nameById.get(item.userId) ?? 'reader';
+            const targetName = item.targetUserId ? nameById.get(item.targetUserId) : null;
+            return (
+              <li key={item.id} className="rounded-lg border border-stone-200 bg-white p-4">
+                <div className="flex items-start gap-3">
+                  <Avatar src={avatarById.get(item.userId) ?? null} name={uname} size={38} />
+                  <div className="min-w-0 flex-1">
+                    <div className="flex flex-wrap items-center gap-x-2 gap-y-1 text-sm">
+                      <Link href={`/u/${uname}`} className="font-medium text-stone-800 hover:text-brand hover:underline">
+                        @{uname}
+                      </Link>
+                      <span className="text-stone-500">
+                        {activityVerb(item.kind)}
+                        {targetName ? ` @${targetName}'s` : ''}
+                      </span>
+                      <span className="rounded-full bg-brand-soft px-2 py-0.5 text-[11px] font-medium text-brand">
+                        {activityLabel(item.kind)}
+                      </span>
+                      <span className="text-xs text-stone-400">{timeAgo(item.at)}</span>
+                    </div>
+                    <Link href={activityHref(item, uname)} className="mt-1 block text-base font-semibold text-stone-800 hover:text-brand hover:underline">
+                      {item.title}
+                    </Link>
+                    {item.body && (
+                      <p className="mt-2 line-clamp-3 whitespace-pre-wrap text-sm leading-6 text-stone-600">
+                        {item.body}
+                      </p>
+                    )}
+                    {item.tags?.length ? (
+                      <div className="mt-3 flex flex-wrap gap-2">
+                        {item.tags.slice(0, 4).map((tag) => (
+                          <Link key={tag} href={`/search?filter=posts&q=${encodeURIComponent(`#${tag}`)}`} className="text-xs text-brand hover:underline">
+                            #{tag}
+                          </Link>
+                        ))}
+                      </div>
+                    ) : null}
+                  </div>
+                </div>
+              </li>
+            );
+          })}
+        </ul>
+      )}
+    </section>
+  );
+}
+
+function PopularTagsCard({ tags }: { tags: { tag: string; count: number }[] }) {
+  return (
+    <section className="rounded-lg border border-stone-200 bg-white p-4">
+      <p className="text-xs font-semibold uppercase tracking-wide text-stone-400">Popular tags</p>
+      {tags.length === 0 ? (
+        <p className="mt-2 text-sm text-stone-500">Tags will appear as posts grow.</p>
+      ) : (
+        <div className="mt-3 flex flex-wrap gap-2">
+          {tags.map(({ tag }) => (
+            <Link
+              key={tag}
+              href={`/search?filter=posts&q=${encodeURIComponent(`#${tag}`)}`}
+              className="rounded-full border border-stone-200 px-2.5 py-1 text-xs text-stone-600 transition hover:border-brand hover:text-brand"
+            >
+              #{tag}
+            </Link>
+          ))}
+        </div>
+      )}
+    </section>
+  );
+}
+
+function DiscoveryRail({
+  article,
+  popularTags = [],
+}: {
+  article: ArticlePreview | null;
+  popularTags?: { tag: string; count: number }[];
+}) {
   return (
     <aside className="space-y-3 lg:sticky lg:top-24">
       <Link
@@ -103,6 +250,8 @@ function DiscoveryRail({ article }: { article: ArticlePreview | null }) {
         </p>
         <p className="mt-3 text-xs text-brand">Open quotes</p>
       </Link>
+
+      <PopularTagsCard tags={popularTags} />
     </aside>
   );
 }
@@ -114,7 +263,6 @@ function ExploreRightRail({
   ratedCount,
   averageRating,
   currentRead,
-  popularTags,
   activity,
   nameById,
   avatarById,
@@ -125,7 +273,6 @@ function ExploreRightRail({
   ratedCount: number;
   averageRating: number | null;
   currentRead: ShelfEntry | null;
-  popularTags: { tag: string; count: number }[];
   activity: Activity[];
   nameById: Map<string, string>;
   avatarById: Map<string, string | null>;
@@ -188,23 +335,40 @@ function ExploreRightRail({
       </section>
 
       <section className="rounded-lg border border-stone-200 bg-white p-4">
-        <p className="text-xs font-semibold uppercase tracking-wide text-stone-400">Friends activity</p>
+        <div className="flex items-center justify-between gap-3">
+          <Link href="/?view=friends" className="text-xs font-semibold uppercase tracking-wide text-stone-400 hover:text-brand">
+            Friends activity
+          </Link>
+          <Link href="/?view=friends" className="text-xs font-medium text-brand hover:underline">
+            View
+          </Link>
+        </div>
         {activity.length === 0 ? (
           <p className="mt-2 text-sm text-stone-500">Follow readers to fill this.</p>
         ) : (
           <ul className="mt-3 space-y-3">
-            {activity.slice(0, 4).map((item, index) => {
+            {activity.slice(0, 7).map((item) => {
               const uname = nameById.get(item.userId) ?? 'reader';
+              const targetName = item.targetUserId ? nameById.get(item.targetUserId) : null;
               return (
-                <li key={`${item.userId}-${item.bookId}-${index}`} className="flex gap-2">
+                <li key={item.id} className="flex gap-2">
                   <Avatar src={avatarById.get(item.userId) ?? null} name={uname} size={28} />
                   <p className="min-w-0 flex-1 text-xs leading-5 text-stone-600">
                     <Link href={`/u/${uname}`} className="font-medium text-stone-800 hover:text-brand hover:underline">
                       @{uname}
                     </Link>{' '}
-                    {item.kind === 'review' ? 'reviewed' : VERB[item.status ?? ''] ?? 'shelved'}{' '}
-                    <Link href={`/book/${item.bookId}`} className="font-medium text-stone-800 hover:text-brand hover:underline">
-                      {item.book?.title ?? 'a book'}
+                    {activityVerb(item.kind)}
+                    {targetName ? (
+                      <>
+                        {' '}
+                        <Link href={`/u/${targetName}`} className="font-medium text-stone-800 hover:text-brand hover:underline">
+                          @{targetName}
+                        </Link>
+                        &apos;s
+                      </>
+                    ) : null}{' '}
+                    <Link href={activityHref(item, uname)} className="font-medium text-stone-800 hover:text-brand hover:underline">
+                      {item.title}
                     </Link>
                     <span className="text-stone-400"> · {timeAgo(item.at)}</span>
                   </p>
@@ -212,25 +376,6 @@ function ExploreRightRail({
               );
             })}
           </ul>
-        )}
-      </section>
-
-      <section className="rounded-lg border border-stone-200 bg-white p-4">
-        <p className="text-xs font-semibold uppercase tracking-wide text-stone-400">Popular tags</p>
-        {popularTags.length === 0 ? (
-          <p className="mt-2 text-sm text-stone-500">Tags will appear as posts grow.</p>
-        ) : (
-          <div className="mt-3 flex flex-wrap gap-2">
-            {popularTags.map(({ tag }) => (
-              <Link
-                key={tag}
-                href={`/search?filter=posts&q=${encodeURIComponent(`#${tag}`)}`}
-                className="rounded-full border border-stone-200 px-2.5 py-1 text-xs text-stone-600 transition hover:border-brand hover:text-brand"
-              >
-                #{tag}
-              </Link>
-            ))}
-          </div>
         )}
       </section>
     </aside>
@@ -270,11 +415,16 @@ function CoverGrid({ items }: { items: CoverItem[] }) {
   );
 }
 
-export default async function ExplorePage() {
+export default async function ExplorePage({
+  searchParams,
+}: {
+  searchParams?: { view?: string };
+}) {
   const supabase = createClient();
   const {
     data: { user },
   } = await supabase.auth.getUser();
+  const friendsView = searchParams?.view === 'friends';
 
   // --- Trending: most-shelved books (computed for everyone) ------------
   const { data: recentEntries } = await supabase
@@ -422,57 +572,144 @@ export default async function ExplorePage() {
 
   // --- Logged-in feed -------------------------------------------------
   // Independent — fetch the viewer's profile + who they follow together.
-  const [meRes, followingRowsRes] = await Promise.all([
+  const [meRes, followingRowsRes, blockRowsRes] = await Promise.all([
     supabase.from('profiles').select('username, display_name').eq('id', user.id).maybeSingle(),
     supabase.from('follows').select('followee_id').eq('follower_id', user.id),
+    supabase
+      .from('blocks')
+      .select('blocker_id, blocked_id')
+      .or(`blocker_id.eq.${user.id},blocked_id.eq.${user.id}`),
   ]);
   const me = meRes.data;
-  const followingIds = (followingRowsRes.data ?? []).map((r: any) => r.followee_id);
+  const blockedIds = new Set<string>();
+  (blockRowsRes.data ?? []).forEach((row: any) => {
+    if (row.blocker_id === user.id) blockedIds.add(row.blocked_id);
+    if (row.blocked_id === user.id) blockedIds.add(row.blocker_id);
+  });
+  const followingIds = (followingRowsRes.data ?? [])
+    .map((r: any) => r.followee_id)
+    .filter((id: string) => !blockedIds.has(id));
 
-  // Activity from people I follow: recent shelf changes + reviews, merged.
+  // Friends activity: public content signals only. No likes, comments,
+  // replies, diary, or shelf updates.
   let activity: Activity[] = [];
   const nameById = new Map<string, string>();
   const avatarById = new Map<string, string | null>();
 
   if (followingIds.length) {
-    const [{ data: shelfRows }, { data: reviewRows }] = await Promise.all([
+    const [
+      { data: postRows },
+      { data: reviewRows },
+      { data: repostRows },
+      { data: quoteRows },
+      { data: listRows },
+    ] = await Promise.all([
       supabase
-        .from('reading_entries')
-        .select('user_id, status, rating, updated_at, book_id, books ( title, author, cover_id )')
+        .from('posts')
+        .select('id, user_id, body_html, body_text, is_article, tags, created_at')
         .in('user_id', followingIds)
-        .order('updated_at', { ascending: false })
-        .limit(20),
+        .eq('status', 'published')
+        .order('created_at', { ascending: false })
+        .limit(35),
       supabase
         .from('reviews')
-        .select('user_id, body, created_at, book_id, books ( title, author, cover_id )')
+        .select('id, user_id, body, created_at, book_id, books ( title )')
         .in('user_id', followingIds)
         .order('created_at', { ascending: false })
-        .limit(20),
+        .limit(30),
+      supabase
+        .from('post_reposts')
+        .select('post_id, user_id, created_at')
+        .in('user_id', followingIds)
+        .order('created_at', { ascending: false })
+        .limit(30),
+      supabase
+        .from('quotes')
+        .select('id, user_id, body, source_title, source_author, tags, created_at')
+        .in('user_id', followingIds)
+        .eq('visibility', 'public')
+        .order('created_at', { ascending: false })
+        .limit(30),
+      supabase
+        .from('lists')
+        .select('id, owner_id, title, description, created_at')
+        .in('owner_id', followingIds)
+        .order('created_at', { ascending: false })
+        .limit(30),
     ]);
 
+    const repostPostIds = Array.from(new Set((repostRows ?? []).map((row: any) => row.post_id)));
+    const { data: repostedPosts } = repostPostIds.length
+      ? await supabase
+          .from('posts')
+          .select('id, user_id, body_html, body_text, is_article, tags, status, created_at')
+          .in('id', repostPostIds)
+          .eq('status', 'published')
+      : { data: [] as any[] };
+    const repostedById = new Map((repostedPosts ?? []).map((post: any) => [post.id, post]));
+
     activity = [
-      ...(shelfRows ?? []).map((e: any) => ({
-        at: e.updated_at,
-        userId: e.user_id,
-        kind: 'shelf' as const,
-        status: e.status,
-        rating: e.rating,
-        bookId: e.book_id,
-        book: e.books,
+      ...((postRows ?? []).map((post: any) => {
+        const text = String(post.body_text ?? '').trim() || htmlToText(post.body_html ?? '');
+        return {
+          id: `post-${post.id}`,
+          at: post.created_at,
+          userId: post.user_id,
+          kind: post.is_article ? 'article' : 'post',
+          href: post.is_article ? `/articles#article-${post.id}` : undefined,
+          title: post.is_article ? articleTitle(text) : 'a post',
+          body: trimText(text, post.is_article ? 180 : 160),
+          tags: Array.isArray(post.tags) ? post.tags : [],
+        };
       })),
-      ...(reviewRows ?? []).map((r: any) => ({
+      ...((reviewRows ?? []).map((r: any) => ({
+        id: `review-${r.id}`,
         at: r.created_at,
         userId: r.user_id,
         kind: 'review' as const,
-        body: r.body,
-        bookId: r.book_id,
-        book: r.books,
-      })),
+        href: `/book/${r.book_id}`,
+        title: r.books?.title ?? 'a book',
+        body: trimText(String(r.body ?? ''), 170),
+      }))),
+      ...(((repostRows ?? []).map((row: any) => {
+        const post = repostedById.get(row.post_id) as any;
+        if (!post) return null;
+        const text = String(post.body_text ?? '').trim() || htmlToText(post.body_html ?? '');
+        return {
+          id: `repost-${row.user_id}-${row.post_id}`,
+          at: row.created_at,
+          userId: row.user_id,
+          kind: 'repost' as const,
+          href: post.is_article ? `/articles#article-${post.id}` : undefined,
+          title: post.is_article ? articleTitle(text) : 'a post',
+          body: trimText(text, 160),
+          tags: Array.isArray(post.tags) ? post.tags : [],
+          targetUserId: post.user_id,
+        };
+      }).filter(Boolean)) as Activity[]),
+      ...((quoteRows ?? []).map((quote: any) => ({
+        id: `quote-${quote.id}`,
+        at: quote.created_at,
+        userId: quote.user_id,
+        kind: 'quote' as const,
+        title: quote.source_title ?? 'a quote',
+        body: trimText(String(quote.body ?? ''), 180),
+        tags: Array.isArray(quote.tags) ? quote.tags : [],
+      }))),
+      ...((listRows ?? []).map((list: any) => ({
+        id: `list-${list.id}`,
+        at: list.created_at,
+        userId: list.owner_id,
+        kind: 'list' as const,
+        href: `/list/${list.id}`,
+        title: list.title,
+        body: trimText(String(list.description ?? ''), 160),
+      }))),
     ]
       .sort((a, b) => (a.at < b.at ? 1 : -1))
-      .slice(0, 15);
+      .slice(0, 30) as Activity[];
 
-    const ids = Array.from(new Set(activity.map((a) => a.userId)));
+    const ids = Array.from(new Set(activity.flatMap((a) => [a.userId, a.targetUserId].filter(Boolean) as string[])));
     if (ids.length) {
       const { data: profs } = await supabase
         .from('profiles')
@@ -576,9 +813,18 @@ export default async function ExplorePage() {
       </header>
 
       <div className="grid gap-8 lg:grid-cols-[15rem_minmax(0,1fr)] lg:items-start xl:grid-cols-[15rem_minmax(0,1fr)_17rem]">
-        <DiscoveryRail article={articlePreview} />
+        <DiscoveryRail article={articlePreview} popularTags={popularTags} />
 
         <div className="min-w-0 space-y-10">
+          {friendsView ? (
+            <FriendsActivityFeed
+              activity={activity}
+              followingCount={followingIds.length}
+              nameById={nameById}
+              avatarById={avatarById}
+            />
+          ) : (
+            <>
 
       {/* Trending now — two opposite-scrolling rows */}
       {trendingItems.length > 0 && (
@@ -627,79 +873,6 @@ export default async function ExplorePage() {
         )}
       </section>
 
-      {/* Activity from people you follow */}
-      <section>
-        <h2 className="mb-3 text-lg font-semibold">From people you follow</h2>
-        {activity.length === 0 ? (
-          <p className="rounded-lg border border-stone-200 bg-white p-4 text-sm text-stone-500">
-            {followingIds.length === 0 ? (
-              <>
-                You&apos;re not following anyone yet.{' '}
-                <Link href="/search" className="text-brand underline">
-                  Find readers
-                </Link>{' '}
-                to fill your feed.
-              </>
-            ) : (
-              'No recent activity from the people you follow.'
-            )}
-          </p>
-        ) : (
-          <ul className="space-y-2">
-            {activity.map((a, i) => {
-              const uname = nameById.get(a.userId) ?? 'reader';
-              return (
-                <li
-                  key={i}
-                  className="flex items-center gap-3 rounded-lg border border-stone-200 bg-white p-3 text-sm"
-                >
-                  <Avatar src={avatarById.get(a.userId) ?? null} name={uname} size={36} />
-                  <div className="h-12 w-8 flex-shrink-0 overflow-hidden rounded bg-slate-100">
-                    {coverUrl(a.book?.cover_id, 'S') && (
-                      <Image
-                        src={coverUrl(a.book?.cover_id, 'S') as string}
-                        alt=""
-                        width={48}
-                        height={72}
-                        className="h-full w-full object-cover"
-                      />
-                    )}
-                  </div>
-                  <p className="min-w-0 flex-1 text-stone-700">
-                    <Link href={`/u/${uname}`} className="font-medium hover:text-brand hover:underline">
-                      @{uname}
-                    </Link>{' '}
-                    {a.kind === 'shelf' ? (
-                      <>
-                        {VERB[a.status ?? ''] ?? 'shelved'}{' '}
-                        <Link href={`/book/${a.bookId}`} className="font-medium hover:text-brand hover:underline">
-                          {a.book?.title}
-                        </Link>
-                        {a.rating ? (
-                          <span className="text-stone-500"> · {Number(a.rating).toFixed(1)}★</span>
-                        ) : null}
-                      </>
-                    ) : (
-                      <>
-                        reviewed{' '}
-                        <Link href={`/book/${a.bookId}`} className="font-medium hover:text-brand hover:underline">
-                          {a.book?.title}
-                        </Link>
-                        {a.body ? (
-                          <span className="text-stone-500"> — “{a.body.slice(0, 80)}{a.body.length > 80 ? '…' : ''}”</span>
-                        ) : null}
-                      </>
-                    )}
-                    {' '}
-                    <span className="whitespace-nowrap text-stone-400">· {timeAgo(a.at)}</span>
-                  </p>
-                </li>
-              );
-            })}
-          </ul>
-        )}
-      </section>
-
       {/* For you (genre-based) */}
       <section>
         <h2 className="mb-3 text-lg font-semibold">For you</h2>
@@ -720,6 +893,8 @@ export default async function ExplorePage() {
           <CoverGrid items={forYou} />
         )}
       </section>
+            </>
+          )}
 
         </div>
         <ExploreRightRail
@@ -729,7 +904,6 @@ export default async function ExplorePage() {
           ratedCount={ratedEntries.length}
           averageRating={averageRating}
           currentRead={currentRead}
-          popularTags={popularTags}
           activity={activity}
           nameById={nameById}
           avatarById={avatarById}

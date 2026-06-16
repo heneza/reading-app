@@ -14,6 +14,7 @@ export async function blockUser(formData: FormData) {
     await supabase.from('blocks').upsert({ blocker_id: user.id, blocked_id: blockedId }, { onConflict: 'blocker_id,blocked_id', ignoreDuplicates: true });
   }
   if (username) { revalidatePath(`/u/${username}`); revalidatePath(`/messages/${username}`); }
+  revalidatePath('/settings');
 }
 
 export async function unblockUser(formData: FormData) {
@@ -24,4 +25,5 @@ export async function unblockUser(formData: FormData) {
   const username = String(formData.get('username') ?? '');
   await supabase.from('blocks').delete().eq('blocker_id', user.id).eq('blocked_id', blockedId);
   if (username) { revalidatePath(`/u/${username}`); revalidatePath(`/messages/${username}`); }
+  revalidatePath('/settings');
 }

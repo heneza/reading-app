@@ -4,6 +4,8 @@ import { createClient } from '@/utils/supabase/server';
 import { requestPasswordReset, signout } from '@/app/login/actions';
 import { setVisibility } from '@/app/actions/profile';
 import { setAiEnabled, setEmailPreferences } from '@/app/actions/account';
+import { unblockUser } from '@/app/actions/blocks';
+import Avatar from '@/components/Avatar';
 import DeleteAccount from './DeleteAccount';
 import ReadReceiptsToggle from './ReadReceiptsToggle';
 import ThemeToggle from './ThemeToggle';
@@ -34,6 +36,19 @@ export default async function SettingsPage({
     .select('*')
     .eq('id', user.id)
     .maybeSingle();
+  const { data: blockedRows } = await supabase
+    .from('blocks')
+    .select('blocked_id, created_at')
+    .eq('blocker_id', user.id)
+    .order('created_at', { ascending: false });
+  const blockedIds = (blockedRows ?? []).map((row: any) => row.blocked_id);
+  const { data: blockedProfiles } = blockedIds.length
+    ? await supabase
+        .from('profiles')
+        .select('id, username, display_name, avatar_url')
+        .in('id', blockedIds)
+    : { data: [] as any[] };
+  const blockedById = new Map((blockedProfiles ?? []).map((blocked: any) => [blocked.id, blocked]));
 
   return (
     <div className="mx-auto max-w-lg space-y-10">
@@ -134,8 +149,48 @@ export default async function SettingsPage({
                 <option value="private">Only me</option>
               </select>
             </label>
+            <label className="flex items-center justify-between gap-3">
+              <span>Who can see your diary</span>
+              <select name="diary_visibility" defaultValue={profile?.diary_visibility ?? 'public'}>
+                <option value="public">Everyone</option>
+                <option value="friends">Friends only</option>
+                <option value="private">Only me</option>
+              </select>
+            </label>
             <button className="rounded bg-brand px-4 py-1.5 text-sm font-medium text-white transition hover:bg-brand-dark">Save visibility</button>
           </form>
+
+          <div className="border-t border-stone-100 pt-3">
+            <h3 className="font-medium text-stone-700">Blocked users</h3>
+            {blockedRows?.length ? (
+              <ul className="mt-3 space-y-2">
+                {blockedRows.map((row: any) => {
+                  const blocked = blockedById.get(row.blocked_id);
+                  if (!blocked) return null;
+                  return (
+                    <li key={row.blocked_id} className="flex items-center justify-between gap-3 rounded border border-stone-200 p-2">
+                      <div className="flex min-w-0 items-center gap-2">
+                        <Avatar src={blocked.avatar_url} name={blocked.display_name ?? blocked.username} size={32} />
+                        <div className="min-w-0">
+                          <p className="truncate font-medium text-stone-700">{blocked.display_name ?? blocked.username}</p>
+                          <p className="truncate text-xs text-stone-400">@{blocked.username}</p>
+                        </div>
+                      </div>
+                      <form action={unblockUser}>
+                        <input type="hidden" name="blockedId" value={row.blocked_id} />
+                        <input type="hidden" name="username" value={blocked.username} />
+                        <button className="rounded border border-stone-300 px-3 py-1 text-xs font-medium text-stone-600 hover:border-brand hover:text-brand">
+                          Unblock
+                        </button>
+                      </form>
+                    </li>
+                  );
+                })}
+              </ul>
+            ) : (
+              <p className="mt-2 text-sm text-stone-500">No blocked users.</p>
+            )}
+          </div>
         </div>
       </section>
 

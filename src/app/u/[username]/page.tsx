@@ -99,21 +99,18 @@ export default async function ProfilePage({
   const favGenres = ((genreRes.data ?? []) as any[]).map((r: any) => r.genre);
   const validMentions = new Set(((mpRes.data ?? []) as any[]).map((r: any) => String(r.username).toLowerCase()));
   const favs = favRes.data ?? [];
-  const diaryPreview = diaryRes.data ?? [];
-  const thisYearCount = thisYearRes.count ?? 0;
+  const rawDiaryPreview = diaryRes.data ?? [];
+  const rawThisYearCount = thisYearRes.count ?? 0;
   const goalsRow = goalsRes.data;
   const booksGoal = goalsRow?.books_goal ?? 0;
   const hoursGoal = Number(goalsRow?.hours_goal ?? 0);
   const hoursThisYear = ((sessionsRes.data ?? []) as any[]).reduce((sum: number, r: any) => sum + Number(r.hours), 0);
-  const booksThisYear = thisYearCount;
   const ownListRows = ownListsRes.data ?? [];
   const likedListRows = likedListsRes.data ?? [];
   const profileLists: { id: string; title: string; mine: boolean }[] = [
     ...(ownListRows as any[]).map((l: any) => ({ id: l.id, title: l.title, mine: true })),
     ...(likedListRows as any[]).map((r: any) => r.lists).filter(Boolean).map((l: any) => ({ id: l.id, title: l.title, mine: false })),
   ];
-  const pctBooks = booksGoal > 0 ? Math.min(100, (booksThisYear / booksGoal) * 100) : 0;
-  const pctHours = hoursGoal > 0 ? Math.min(100, (hoursThisYear / hoursGoal) * 100) : 0;
   const followerIds = ((followerRes.data ?? []) as any[]).map((r: any) => r.follower_id);
   const followingSet = new Set(((followingRes.data ?? []) as any[]).map((r: any) => r.followee_id));
   const friendCount = followerIds.filter((id: string) => followingSet.has(id)).length;
@@ -124,6 +121,12 @@ export default async function ProfilePage({
   const canSee = (vis: string) => isOwnProfile || vis === 'public' || (vis === 'friends' && isFriend);
   const canLikes = canSee(profile.likes_visibility ?? 'public');
   const canReplies = canSee(profile.comments_visibility ?? 'public');
+  const canDiary = canSee(profile.diary_visibility ?? 'public');
+  const diaryPreview = canDiary ? rawDiaryPreview : [];
+  const thisYearCount = canDiary ? rawThisYearCount : 0;
+  const booksThisYear = thisYearCount;
+  const pctBooks = booksGoal > 0 ? Math.min(100, (booksThisYear / booksGoal) * 100) : 0;
+  const pctHours = hoursGoal > 0 ? Math.min(100, (hoursThisYear / hoursGoal) * 100) : 0;
   const tasteMatchPromise = computeUserTasteMatch(
     supabase,
     user?.id,
@@ -196,7 +199,7 @@ export default async function ProfilePage({
   } else if (tab === 'reviews') {
     const { data: rv } = await supabase.from('reviews').select('id, body, book_id, created_at, books ( title )').eq('user_id', profile.id).order('created_at', { ascending: false }).limit(30);
     reviews = rv ?? [];
-  } else if (tab === 'diary') {
+  } else if (tab === 'diary' && canDiary) {
     const { data: dv } = await supabase
       .from('diary_entries')
       .select('id, read_on, rating, note, is_reread, book_id, books ( title, author, cover_id )')
@@ -551,31 +554,33 @@ export default async function ProfilePage({
           )}
 
           {/* Diary preview — Letterboxd-style, grouped by month */}
-          <div id="profile-diary-card" className="scroll-mt-24 rounded-lg border border-stone-200 bg-white p-3">
-            <div className="mb-2 flex items-center justify-between">
-              <h3 className="text-sm font-semibold text-stone-700">Diary</h3>
-              <Link href={tabHref('diary')} className="text-xs text-brand hover:underline">Visit diary →</Link>
+          {canDiary && (
+            <div id="profile-diary-card" className="scroll-mt-24 rounded-lg border border-stone-200 bg-white p-3">
+              <div className="mb-2 flex items-center justify-between">
+                <h3 className="text-sm font-semibold text-stone-700">Diary</h3>
+                <Link href={tabHref('diary')} className="text-xs text-brand hover:underline">Visit diary →</Link>
+              </div>
+              {diaryPreview.length === 0 ? (
+                <p className="text-xs text-stone-400">No entries yet.</p>
+              ) : (
+                <ul className="space-y-2 text-sm">
+                  {diaryByMonth.map((g) => (
+                    <li key={g.key} className="flex gap-2">
+                      <span className="w-8 flex-shrink-0 pt-0.5 text-[10px] font-semibold uppercase tracking-wide text-stone-400">{g.label}</span>
+                      <ul className="min-w-0 flex-1 space-y-1">
+                        {g.items.map((d: any) => (
+                          <li key={d.id} className="flex gap-2">
+                            <span className="w-4 flex-shrink-0 text-right text-xs text-stone-400">{Number(String(d.read_on).slice(8, 10))}</span>
+                            <Link href={`/book/${d.book_id}`} title={d.books?.title} className="min-w-0 flex-1 truncate text-stone-700 hover:text-brand hover:underline">{d.books?.title}</Link>
+                          </li>
+                        ))}
+                      </ul>
+                    </li>
+                  ))}
+                </ul>
+              )}
             </div>
-            {diaryPreview.length === 0 ? (
-              <p className="text-xs text-stone-400">No entries yet.</p>
-            ) : (
-              <ul className="space-y-2 text-sm">
-                {diaryByMonth.map((g) => (
-                  <li key={g.key} className="flex gap-2">
-                    <span className="w-8 flex-shrink-0 pt-0.5 text-[10px] font-semibold uppercase tracking-wide text-stone-400">{g.label}</span>
-                    <ul className="min-w-0 flex-1 space-y-1">
-                      {g.items.map((d: any) => (
-                        <li key={d.id} className="flex gap-2">
-                          <span className="w-4 flex-shrink-0 text-right text-xs text-stone-400">{Number(String(d.read_on).slice(8, 10))}</span>
-                          <Link href={`/book/${d.book_id}`} title={d.books?.title} className="min-w-0 flex-1 truncate text-stone-700 hover:text-brand hover:underline">{d.books?.title}</Link>
-                        </li>
-                      ))}
-                    </ul>
-                  </li>
-                ))}
-              </ul>
-            )}
-          </div>
+          )}
 
           {/* Ratings distribution histogram */}
           {ratingValues.length > 0 && (
@@ -715,7 +720,9 @@ export default async function ProfilePage({
 
             {/* DIARY */}
             {tab === 'diary' && (
-              diary.length === 0 ? (
+              !canDiary ? (
+                <p className="text-sm text-stone-500">{profile.diary_visibility === 'friends' ? 'Diary is visible to friends only.' : 'Diary is private.'}</p>
+              ) : diary.length === 0 ? (
                 <p className="text-sm text-stone-500">No diary entries yet.</p>
               ) : (
                 <ul className="space-y-2">
