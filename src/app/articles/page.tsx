@@ -45,7 +45,7 @@ export default async function ArticlesPage() {
       ) : (
         <ul className="space-y-4">
           {articles.map((p: any) => (
-            <li key={p.id}>
+            <li key={p.id} id={`article-${p.id}`} className="scroll-mt-24">
               <PostCard
                 post={p}
                 author={authors.get(p.user_id)}

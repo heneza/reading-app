@@ -7,6 +7,7 @@ import PostCard from '@/components/PostCard';
 import BookMarquee from '@/components/BookMarquee';
 import { timeAgo } from '@/lib/time';
 import { loadPostCardInteractions } from '@/lib/post-interactions';
+import { htmlToText } from '@/lib/sanitize';
 
 export const dynamic = 'force-dynamic';
 
@@ -23,6 +24,58 @@ type CoverItem = {
   author?: string | null;
   coverId?: number | null;
 };
+
+type ArticlePreview = {
+  id: string;
+  title: string;
+  excerpt: string;
+  author: string | null;
+  tag: string | null;
+};
+
+function trimText(text: string, max = 120) {
+  const clean = text.trim();
+  return clean.length > max ? `${clean.slice(0, max).trim()}...` : clean;
+}
+
+function articleTitle(text: string) {
+  const firstSentence = text.split(/[.!?]\s/)[0] ?? text;
+  return trimText(firstSentence, 64) || 'Read the latest article';
+}
+
+function DiscoveryRail({ article }: { article: ArticlePreview | null }) {
+  return (
+    <aside className="space-y-3 lg:sticky lg:top-24">
+      <Link
+        href={article ? `/articles#article-${article.id}` : '/articles'}
+        className="block rounded-lg border border-stone-200 bg-white p-4 transition hover:border-brand"
+      >
+        <p className="text-xs font-semibold uppercase tracking-wide text-stone-400">Articles</p>
+        <h2 className="mt-1 text-base font-semibold text-stone-800">
+          {article?.title ?? 'Book essays and criticism'}
+        </h2>
+        <p className="mt-2 text-sm text-stone-500">
+          {article?.excerpt ?? 'Long-form writing from readers, gathered in one place.'}
+        </p>
+        <p className="mt-3 text-xs text-brand">
+          {article?.tag ? `#${article.tag}` : 'Open articles'}{article?.author ? ` · @${article.author}` : ''}
+        </p>
+      </Link>
+
+      <Link
+        href="/quotes"
+        className="block rounded-lg border border-stone-200 bg-white p-4 transition hover:border-brand"
+      >
+        <p className="text-xs font-semibold uppercase tracking-wide text-stone-400">Quotes</p>
+        <h2 className="mt-1 text-base font-semibold text-stone-800">Save lines worth keeping</h2>
+        <p className="mt-2 text-sm text-stone-500">
+          Keep book quotes, notes, sources, and tags in your private quote shelf.
+        </p>
+        <p className="mt-3 text-xs text-brand">Open quotes</p>
+      </Link>
+    </aside>
+  );
+}
 
 function CoverGrid({ items }: { items: CoverItem[] }) {
   return (
@@ -135,6 +188,34 @@ export default async function ExplorePage() {
     }
   }
 
+  const { data: latestArticleRows } = await supabase
+    .from('posts')
+    .select('id, user_id, body_html, body_text, tags, created_at')
+    .eq('is_article', true)
+    .eq('status', 'published')
+    .order('created_at', { ascending: false })
+    .limit(1);
+  const latestArticle = latestArticleRows?.[0] as any | undefined;
+  let articlePreview: ArticlePreview | null = null;
+  if (latestArticle) {
+    let author: string | null = null;
+    const { data: articleAuthor } = await supabase
+      .from('profiles')
+      .select('username')
+      .eq('id', latestArticle.user_id)
+      .maybeSingle();
+    author = articleAuthor?.username ?? null;
+
+    const text = String(latestArticle.body_text ?? '').trim() || htmlToText(latestArticle.body_html ?? '');
+    articlePreview = {
+      id: latestArticle.id,
+      title: articleTitle(text),
+      excerpt: trimText(text, 118),
+      author,
+      tag: Array.isArray(latestArticle.tags) && latestArticle.tags.length ? latestArticle.tags[0] : null,
+    };
+  }
+
   // --- Logged-out: hero + trending ------------------------------------
   if (!user) {
     return (
@@ -151,6 +232,8 @@ export default async function ExplorePage() {
             Get started
           </Link>
         </div>
+
+        <DiscoveryRail article={articlePreview} />
 
         {trendingItems.length > 0 && (
           <section>
@@ -323,6 +406,11 @@ export default async function ExplorePage() {
         )}
       </header>
 
+      <div className="grid gap-8 lg:grid-cols-[15rem_minmax(0,1fr)] lg:items-start">
+        <DiscoveryRail article={articlePreview} />
+
+        <div className="min-w-0 space-y-10">
+
       {/* Trending now — two opposite-scrolling rows */}
       {trendingItems.length > 0 && (
         <section>
@@ -463,6 +551,9 @@ export default async function ExplorePage() {
           <CoverGrid items={forYou} />
         )}
       </section>
+
+        </div>
+      </div>
 
     </div>
   );

@@ -17,12 +17,6 @@ export default function NavPrimaryLinks({ username }: { username?: string | null
           Lists
         </Link>
       )}
-      <Link
-        href="/articles"
-        className="hidden rounded-full px-3 py-1.5 text-slate-600 transition hover:bg-brand-soft hover:text-brand sm:inline-flex"
-      >
-        Articles
-      </Link>
     </>
   );
 }

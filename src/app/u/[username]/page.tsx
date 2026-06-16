@@ -309,7 +309,6 @@ export default async function ProfilePage({
                   {isOwnProfile && (
                     <>
                       <Link href="/goals" className="rounded-full border border-stone-300 px-3 py-1.5 text-sm font-medium text-stone-600 transition hover:border-brand hover:text-brand">Goals</Link>
-                      <Link href="/quotes" className="rounded-full border border-stone-300 px-3 py-1.5 text-sm font-medium text-stone-600 transition hover:border-brand hover:text-brand">Quotes</Link>
                     </>
                   )}
                   {!isOwnProfile && user && (
