@@ -301,11 +301,9 @@ function CommunityRail({
 
 function DiscoveryRail({
   article,
-  featuredList,
   popularTags = [],
 }: {
   article: ArticlePreview | null;
-  featuredList?: { id: string; title: string; items: CoverItem[] } | null;
   popularTags?: { tag: string; count: number }[];
 }) {
   return (
@@ -324,22 +322,6 @@ function DiscoveryRail({
         <p className="mt-3 text-xs text-brand">
           {article?.tag ? `#${article.tag}` : 'Open articles'}{article?.author ? ` · @${article.author}` : ''}
         </p>
-      </Link>
-
-      <Link
-        href={featuredList ? `/list/${featuredList.id}` : '/lists'}
-        className="block rounded-lg border border-stone-200 bg-white p-4 transition hover:border-brand"
-      >
-        <p className="text-xs font-semibold uppercase tracking-wide text-stone-400">Lists</p>
-        <h2 className="mt-1 text-base font-semibold text-stone-800">
-          {featuredList?.title ?? 'Reader-made shelves'}
-        </h2>
-        <p className="mt-2 text-sm text-stone-500">
-          {featuredList
-            ? `${featuredList.items.length} books from a community list.`
-            : 'Browse themed book lists from readers.'}
-        </p>
-        <p className="mt-3 text-xs text-brand">Open lists</p>
       </Link>
 
       <Link
@@ -519,7 +501,7 @@ export default async function ExplorePage({
           </Link>
         </div>
 
-        <DiscoveryRail article={articlePreview} featuredList={featured} />
+        <DiscoveryRail article={articlePreview} />
 
         {trendingItems.length > 0 && (
           <section>
@@ -870,7 +852,7 @@ export default async function ExplorePage({
 
         </div>
         <div className="hidden xl:block">
-          <DiscoveryRail article={articlePreview} featuredList={featured} popularTags={popularTags} />
+          <DiscoveryRail article={articlePreview} popularTags={popularTags} />
         </div>
       </div>
 
