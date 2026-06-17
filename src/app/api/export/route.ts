@@ -10,10 +10,11 @@ export async function GET() {
   // RLS scopes each of these to the requesting user (messages includes the
   // ones they sent or received — all genuinely their data).
   const [
-    profile, entries, reviews, comments, posts, diary, goals, sessions,
+    profile, privateProfile, entries, reviews, comments, posts, diary, goals, sessions,
     lists, listItems, quotes, contentWarnings, messages, blocks,
   ] = await Promise.all([
     supabase.from('profiles').select('*').eq('id', user.id).maybeSingle(),
+    supabase.from('private_profiles').select('*').eq('id', user.id).maybeSingle(),
     supabase.from('reading_entries').select('*').eq('user_id', user.id),
     supabase.from('reviews').select('*').eq('user_id', user.id),
     supabase.from('review_comments').select('*').eq('user_id', user.id),
@@ -33,6 +34,7 @@ export async function GET() {
     exported_at: new Date().toISOString(),
     account: { id: user.id, email: user.email },
     profile: profile.data ?? null,
+    private_profile: privateProfile.data ?? null,
     reading_entries: entries.data ?? [],
     reviews: reviews.data ?? [],
     review_comments: comments.data ?? [],
