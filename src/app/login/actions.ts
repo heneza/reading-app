@@ -4,6 +4,7 @@ import { revalidatePath } from 'next/cache';
 import { redirect } from 'next/navigation';
 import { headers } from 'next/headers';
 import { createClient } from '@/utils/supabase/server';
+import { createAdminClient } from '@/utils/supabase/admin';
 import { normalizeUsername, validateUsername } from '@/lib/username';
 
 function getCaptchaToken(formData: FormData) {
@@ -91,10 +92,19 @@ export async function login(formData: FormData) {
   }
 
   // If they typed a username (no "@"), resolve it to the account email.
+  // This must happen server-side with the service-role key: email_for_username
+  // reads auth.users, so it is no longer callable by anon/authenticated clients
+  // (otherwise anyone could map every username to its email). On any failure we
+  // leave email empty and fall through to the generic "invalid login" error.
   let email = identifier;
   if (identifier && !identifier.includes('@')) {
-    const { data } = await supabase.rpc('email_for_username', { uname: identifier });
-    email = typeof data === 'string' ? data : '';
+    try {
+      const admin = createAdminClient();
+      const { data } = await admin.rpc('email_for_username', { uname: identifier });
+      email = typeof data === 'string' ? data : '';
+    } catch {
+      email = '';
+    }
   }
 
   const { error } = email
