@@ -273,12 +273,12 @@ export default async function ProfilePage({
   const isShelfView = tab === 'shelf';
 
   return (
-    <div>
+    <div className="relative left-1/2 w-[min(100vw-2rem,1180px)] -translate-x-1/2">
       {/* --- Profile header --- */}
       <div className="flex items-start gap-5">
         <Avatar src={profile.avatar_url} name={profile.display_name ?? profile.username} size={72} />
         <div className="min-w-0 flex-1">
-          <div className="flex items-start justify-between gap-6">
+          <div className="flex flex-col gap-4 lg:flex-row lg:items-start lg:justify-between lg:gap-8">
             {/* Left: name, username, counts, bio */}
             <div className="min-w-0">
               <div className="flex items-center gap-2">
@@ -392,7 +392,7 @@ export default async function ProfilePage({
       )}
 
       {/* --- Favourites + Shelf (same line) --- */}
-      <div className="mt-8 flex flex-col gap-6 sm:flex-row sm:items-start">
+      <div className="mt-8 grid gap-6 lg:grid-cols-[minmax(0,1fr)_20rem] lg:items-start">
         <div id={isShelfView ? 'profile-shelf' : undefined} className="min-w-0 flex-1 scroll-mt-24">
           {isShelfView ? (
             <section className="space-y-7">
@@ -438,7 +438,7 @@ export default async function ProfilePage({
               )}
             </section>
           ) : (
-            <>
+            <div className="grid gap-8 xl:grid-cols-2">
               <section>
                 <h2 className="mb-3 text-sm font-semibold uppercase tracking-wide text-slate-400">Favourites</h2>
                 {favs.length > 0 ? (
@@ -468,7 +468,7 @@ export default async function ProfilePage({
                 )}
               </section>
 
-              <section className="mt-8">
+              <section>
                 <h2 className="mb-3 text-sm font-semibold uppercase tracking-wide text-slate-400">Recently read ({recentReadRow.length})</h2>
                 {recentReadRow.length > 0 ? (
                   <ul className="grid max-w-md grid-cols-4 gap-3">
@@ -497,10 +497,10 @@ export default async function ProfilePage({
                   </>
                 )}
               </section>
-            </>
+            </div>
           )}
         </div>
-        <aside className="space-y-4 sm:w-80 sm:flex-shrink-0">
+        <aside className="space-y-4 lg:sticky lg:top-24">
           {!isShelfView && (
           <div className="rounded-lg border border-stone-200 bg-white p-3">
             <div className="mb-2 flex items-center justify-between">
