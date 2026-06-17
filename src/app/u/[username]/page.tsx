@@ -365,11 +365,11 @@ export default async function ProfilePage({
         <main id="profile-shelf" className="min-w-0 scroll-mt-24">
 
           {tab === 'overview' && (
-            <div className="grid gap-8 xl:grid-cols-2">
+            <div className="space-y-10">
               <section>
                 <h2 className="mb-3 text-sm font-semibold uppercase tracking-wide text-slate-400">Favourites</h2>
                 {favs.length > 0 ? (
-                  <ul className="grid max-w-md grid-cols-4 gap-3">
+                  <ul className="grid grid-cols-2 gap-4 sm:grid-cols-3 lg:grid-cols-4">
                     {favs.map((f: any) => {
                       const src = coverUrl(f.books?.cover_id, 'M');
                       return (
@@ -385,7 +385,7 @@ export default async function ProfilePage({
                   </ul>
                 ) : (
                   <>
-                    <ul className="grid max-w-md grid-cols-4 gap-3">
+                    <ul className="grid grid-cols-2 gap-4 sm:grid-cols-3 lg:grid-cols-4">
                       {[0, 1, 2, 3].map((i) => (
                         <li key={i}><div className="aspect-[2/3] w-full rounded border border-dashed border-stone-200 bg-stone-50" /></li>
                       ))}
@@ -398,7 +398,7 @@ export default async function ProfilePage({
               <section>
                 <h2 className="mb-3 text-sm font-semibold uppercase tracking-wide text-slate-400">Recently read ({recentReadRow.length})</h2>
                 {recentReadRow.length > 0 ? (
-                  <ul className="grid max-w-md grid-cols-4 gap-3">
+                  <ul className="grid grid-cols-2 gap-4 sm:grid-cols-3 lg:grid-cols-4">
                     {recentReadRow.map((b) => {
                       const src = coverUrl(b.cover_id, 'M');
                       return (
@@ -415,7 +415,7 @@ export default async function ProfilePage({
                   </ul>
                 ) : (
                   <>
-                    <ul className="grid max-w-md grid-cols-4 gap-3">
+                    <ul className="grid grid-cols-2 gap-4 sm:grid-cols-3 lg:grid-cols-4">
                       {[0, 1, 2, 3].map((i) => (
                         <li key={i}><div className="aspect-[2/3] w-full rounded border border-dashed border-stone-200 bg-stone-50" /></li>
                       ))}
