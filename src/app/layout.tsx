@@ -1,10 +1,11 @@
-import type { Metadata } from 'next';
+import type { Metadata, Viewport } from 'next';
 import { Source_Serif_4 } from 'next/font/google';
 import './globals.css';
 import Nav from '@/components/Nav';
 import Assistant from '@/components/Assistant';
 import InboxWidget from '@/components/InboxWidget';
 import RealtimeNotifications from '@/components/RealtimeNotifications';
+import RegisterServiceWorker from '@/components/RegisterServiceWorker';
 import { loadMessageSidebarItems } from '@/lib/message-sidebar';
 import type { MessageSidebarItem } from '@/lib/message-sidebar';
 import { createClient } from '@/utils/supabase/server';
@@ -21,6 +22,17 @@ const bodyFont = Source_Serif_4({
 export const metadata: Metadata = {
   title: 'Reading App',
   description: 'A community for readers',
+  applicationName: 'Reading App',
+  appleWebApp: {
+    capable: true,
+    title: 'Reading App',
+    statusBarStyle: 'black-translucent',
+  },
+  icons: { icon: '/icon.svg' },
+};
+
+export const viewport: Viewport = {
+  themeColor: '#0b0809',
 };
 
 const themeScript = `
@@ -69,6 +81,7 @@ export default async function RootLayout({
         <script dangerouslySetInnerHTML={{ __html: themeScript }} />
       </head>
       <body className="font-sans">
+        <RegisterServiceWorker />
         <Nav viewerId={user?.id ?? null} profile={viewerProfile} />
         <main className="mx-auto max-w-[880px] px-5 py-8">{children}</main>
         {user && <InboxWidget meId={user.id} initialItems={inboxItems} />}
