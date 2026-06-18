@@ -251,7 +251,12 @@ export async function signInWithGoogle() {
   const origin = headers().get('origin') ?? '';
   const { data, error } = await supabase.auth.signInWithOAuth({
     provider: 'google',
-    options: { redirectTo: `${origin}/auth/callback` },
+    options: {
+      redirectTo: `${origin}/auth/callback`,
+      // Always show Google's account picker, so users aren't silently locked
+      // into one Google account and can choose which one to sign in with.
+      queryParams: { prompt: 'select_account' },
+    },
   });
   if (error || !data?.url) {
     redirect('/login?error=' + encodeURIComponent('Could not start Google sign-in.'));

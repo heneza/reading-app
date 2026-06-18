@@ -36,6 +36,28 @@ export async function setEmailPreferences(formData: FormData) {
   revalidatePath('/settings');
 }
 
+// Set (or change) the signed-in user's password. Works even for accounts
+// created via Google sign-in, which start with no password — afterwards they
+// can also log in with their username/email + this password. Does NOT sign
+// the user out, so they stay logged in.
+export async function setPassword(
+  formData: FormData
+): Promise<{ error: string | null }> {
+  const supabase = createClient();
+  const { data: { user } } = await supabase.auth.getUser();
+  if (!user) return { error: 'You are not signed in.' };
+
+  const password = String(formData.get('password') ?? '');
+  const confirm = String(formData.get('confirm') ?? '');
+  if (password.length < 8) return { error: 'Use at least 8 characters.' };
+  if (password !== confirm) return { error: 'Passwords do not match.' };
+
+  const { error } = await supabase.auth.updateUser({ password });
+  if (error) return { error: 'Could not set your password. Please try again.' };
+
+  return { error: null };
+}
+
 // Permanently delete the user's account and all their data (GDPR erasure).
 export async function deleteAccount() {
   const supabase = createClient();

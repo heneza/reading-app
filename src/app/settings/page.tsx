@@ -7,6 +7,7 @@ import { setAiEnabled, setEmailPreferences } from '@/app/actions/account';
 import { unblockUser } from '@/app/actions/blocks';
 import Avatar from '@/components/Avatar';
 import DeleteAccount from './DeleteAccount';
+import SetPasswordForm from './SetPasswordForm';
 import ReadReceiptsToggle from './ReadReceiptsToggle';
 import ThemeToggle from './ThemeToggle';
 import Turnstile from '@/components/Turnstile';
@@ -144,6 +145,8 @@ export default async function SettingsPage({
               Send password reset email
             </button>
           </form>
+
+          <SetPasswordForm />
 
           <form action={setVisibility} className="space-y-2 border-t border-stone-100 pt-3">
             <label className="flex items-center justify-between gap-3">
