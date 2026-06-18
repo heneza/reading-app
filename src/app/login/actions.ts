@@ -148,7 +148,9 @@ export async function requestPasswordReset(formData: FormData) {
   }
 
   const { error } = await supabase.auth.resetPasswordForEmail(email, {
-    redirectTo: `${base}/auth/callback?next=/reset-password/update`,
+    // Token-hash route (works cross-browser). Requires the matching Supabase
+    // "Reset Password" email template (see repo notes / setup).
+    redirectTo: `${base}/auth/confirm?next=/reset-password/update`,
     captchaToken: captchaToken || undefined,
   });
 
